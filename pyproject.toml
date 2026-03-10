@@ -1,0 +1,27 @@
+[project]
+name = "ai-skills"
+version = "0.1.0"
+description = "A monorepo for AI skills and projects with shared utilities and standardized structure"
+readme = "README.md"
+requires-python = ">=3.14"
+dependencies = []
+
+[dependency-groups]
+lint = ["ruff", "ty", "yamllint"]
+test = []
+security = ["safety"]
+assessment = ["agentready"]
+git-hooks = ["pre-commit"]
+dev = [
+    {include-group = "lint"},
+    {include-group = "test"},
+    {include-group = "security"},
+    {include-group = "assessment"},
+    {include-group = "git-hooks"},
+]
+
+[tool.ruff]
+target-version = "py314"
+
+[tool.ty]
+environment.extra-paths = ["src"]

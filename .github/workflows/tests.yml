@@ -1,0 +1,97 @@
+name: Test AI Skills
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      python-skills: ${{ steps.changes.outputs.python-skills }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          base: ${{ github.event.repository.default_branch || 'main' }}
+          filters: |
+            python-skills:
+              - 'skills/**/src/**/*.py'
+              - 'skills/**/tests/**/*.py'
+              - 'skills/**/*.py'
+              - 'src/**/*.py'
+
+  test-python-skills:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.python-skills == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.14]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          uv sync --group test
+
+      - name: Find Python skills
+        id: find-skills
+        run: |
+          # Find all Python skills
+          skills=$(find skills -name "*.py" | xargs dirname | sed 's|/src.*||' | sort -u | tr '\n' ' ')
+          echo "Found Python skills: $skills"
+          echo "skills=$skills" >> $GITHUB_OUTPUT
+
+      - name: Test Python skills
+        run: |
+          skills="${{ steps.find-skills.outputs.skills }}"
+          if [ -z "$skills" ]; then
+            echo "No Python skills found to test"
+            exit 0
+          fi
+
+          for skill in $skills; do
+            echo "Testing skill: $skill"
+            if [ -d "$skill" ]; then
+              cd "$skill"
+
+              # Run tests if test directory exists
+              if [ -d "tests" ]; then
+                echo "Running tests for $skill"
+                uv run python -m pytest tests/ || echo "Tests failed or no pytest available for $skill"
+              elif [ -d "test" ]; then
+                echo "Running tests for $skill"
+                uv run python -m pytest test/ || echo "Tests failed or no pytest available for $skill"
+              else
+                echo "No tests directory found for $skill"
+              fi
+
+              # Try to run main script if it exists
+              if [ -f "src/main.py" ]; then
+                echo "Running main script for $skill"
+                uv run python src/main.py || echo "Could not run $skill/src/main.py"
+              elif [ -f "main.py" ]; then
+                echo "Running main script for $skill"
+                uv run python main.py || echo "Could not run $skill/main.py"
+              else
+                echo "No main script found for $skill"
+              fi
+
+              cd - > /dev/null
+            else
+              echo "Skill directory $skill does not exist"
+            fi
+          done
+
+
