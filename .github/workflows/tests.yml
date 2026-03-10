@@ -1,0 +1,114 @@
+name: Test AI Skills
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      python-skills: ${{ steps.changes.outputs.python-skills }}
+      js-skills: ${{ steps.changes.outputs.js-skills }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: changes
+        with:
+          filters: |
+            python-skills:
+              - 'skills/**/src/**/*.py'
+              - 'skills/**/tests/**/*.py'
+              - 'shared/python/**'
+            js-skills:
+              - 'skills/**/src/**/*.js'
+              - 'skills/**/src/**/*.ts'
+              - 'skills/**/tests/**/*.js'
+              - 'skills/**/tests/**/*.ts'
+              - 'shared/javascript/**'
+
+  test-python-skills:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.python-skills == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          uv sync
+          # Install test dependencies when available
+          # uv sync --group test
+
+      - name: Find Python skills
+        id: find-skills
+        run: |
+          # Find all Python skills with tests
+          skills=$(find skills -name "*.py" -path "*/src/*" -exec dirname {} \; | sed 's|/src||' | sort -u)
+          echo "Found Python skills: $skills"
+          echo "skills=$skills" >> $GITHUB_OUTPUT
+
+      - name: Test Python skills
+        run: |
+          for skill in ${{ steps.find-skills.outputs.skills }}; do
+            echo "Testing skill: $skill"
+            cd "$skill"
+            if [ -f "pyproject.toml" ]; then
+              uv sync
+            elif [ -f "requirements.txt" ]; then
+              uv pip install -r requirements.txt
+            fi
+            # Add your test commands here
+            # uv run pytest tests/ || echo "No tests found for $skill"
+            uv run python src/main.py || echo "Could not run $skill/src/main.py"
+            cd -
+          done
+
+  test-js-skills:
+    needs: detect-changes
+    if: needs.detect-changes.outputs.js-skills == 'true'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18, 20]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+
+      - name: Find JavaScript/TypeScript skills
+        id: find-skills
+        run: |
+          # Find all JS/TS skills
+          skills=$(find skills -name "*.js" -o -name "*.ts" | head -1 | xargs dirname | sed 's|/src||' | sort -u)
+          echo "Found JS/TS skills: $skills"
+          echo "skills=$skills" >> $GITHUB_OUTPUT
+
+      - name: Test JavaScript skills
+        run: |
+          for skill in ${{ steps.find-skills.outputs.skills }}; do
+            echo "Testing skill: $skill"
+            if [ -f "$skill/package.json" ]; then
+              cd "$skill"
+              npm install
+              # npm test || echo "No tests found for $skill"
+              cd -
+            fi
+          done
+

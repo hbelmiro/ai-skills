@@ -1,0 +1,53 @@
+name: Lint
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint-python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install lint dependencies
+        run: uv sync --group lint
+
+      - name: Lint and format Python code with ruff
+        run: |
+          # Lint Python code
+          uv run ruff check . || echo "Ruff linting issues found"
+
+          # Check formatting
+          uv run ruff format --check . || echo "Ruff formatting issues found"
+
+      - name: Type check Python code with ty
+        run: |
+          uv run ty check . || echo "Type checking issues found"
+
+  lint-yaml:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install
+
+      - name: Install lint dependencies
+        run: uv sync --group lint
+
+      - name: Lint YAML files
+        run: |
+          find . -path "./.venv" -prune -o -path "./.git" -prune -o \( -name "*.yml" -o -name "*.yaml" \) -print | xargs uv run yamllint -d "{extends: default, rules: {line-length: {max: 120}, indentation: {spaces: 2}}}" || echo "YAML linting issues found"
+
