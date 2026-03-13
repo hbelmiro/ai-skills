@@ -677,3 +677,44 @@ class TestCli:
     def test_neither_personal_nor_project_errors(self) -> None:
         result = _run_cli("--skill", "my-skill")
         assert result.returncode != 0
+
+
+# ---------------------------------------------------------------------------
+# Integration / smoke test
+# ---------------------------------------------------------------------------
+
+
+class TestSmoke:
+    """End-to-end CLI round-trip against the real skills directory."""
+
+    def test_install_and_uninstall_via_cli(self, tmp_path: Path) -> None:
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        target_dir = project_dir / ".cursor" / "skills"
+
+        result = _run_cli(
+            "--skill", "python-code-review", "--project", str(project_dir)
+        )
+        assert result.returncode == 0, result.stderr
+
+        assert (target_dir / "python-code-review").is_symlink()
+        assert (target_dir / "python-code-review" / "SKILL.md").is_file()
+        assert (target_dir / "review-shared").is_symlink()
+
+        result = _run_cli(
+            "--skill", "python-code-review", "--project", str(project_dir)
+        )
+        assert result.returncode == 0, result.stderr
+        assert "already installed" in result.stderr
+
+        result = _run_cli(
+            "--skill",
+            "python-code-review",
+            "--project",
+            str(project_dir),
+            "--uninstall",
+        )
+        assert result.returncode == 0, result.stderr
+
+        assert not (target_dir / "python-code-review").exists()
+        assert not (target_dir / "review-shared").exists()
