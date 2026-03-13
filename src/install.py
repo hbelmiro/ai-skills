@@ -14,6 +14,24 @@ _FIELD_RE = re.compile(r"^(\w+):\s*(.+)", re.MULTILINE)
 
 _SKILLS_DIR_NAME = "skills"
 _SKILL_MD = "SKILL.md"
+_SKILL_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
+
+
+def _validate_skill_name(name: str) -> None:
+    """Reject names containing path separators or not matching the naming convention."""
+    # Explicit traversal check as defense-in-depth before the regex.
+    if (
+        "/" in name
+        or "\\" in name
+        or name in (".", "..")
+        or not _SKILL_NAME_RE.match(name)
+    ):
+        print(
+            f"error: invalid skill name '{name}': "
+            "must be lowercase alphanumeric with hyphens (e.g. 'go-code-review')",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
 
 
 def _repo_root() -> Path:
@@ -153,6 +171,7 @@ def install_skill(
     force: bool = False,
 ) -> None:
     """Validate, then symlink *skill_name* and its dependencies into *target_dir*."""
+    _validate_skill_name(skill_name)
     skill_dir = skills_root / skill_name
 
     if not skill_dir.is_dir():
@@ -194,6 +213,7 @@ def uninstall_skill(
     skills_root: Path,
 ) -> None:
     """Remove symlinks for *skill_name* and orphaned dependencies from *target_dir*."""
+    _validate_skill_name(skill_name)
     if not target_dir.is_dir():
         print(
             f"warning: '{skill_name}' is not installed (target directory does not exist)",

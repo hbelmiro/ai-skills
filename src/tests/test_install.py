@@ -418,6 +418,25 @@ class TestInstallSkill:
         captured = capsys.readouterr()
         assert "real-skill" in captured.err
 
+    @pytest.mark.parametrize(
+        "bad_name",
+        ["../escape", "a/b", ".", "..", "UPPER", "has space", "under_score"],
+    )
+    def test_rejects_invalid_skill_name(
+        self,
+        skills_root: Path,
+        target_dir: Path,
+        bad_name: str,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        with pytest.raises(SystemExit):
+            install_skill(bad_name, target_dir, skills_root)
+
+        assert "invalid skill name" in capsys.readouterr().err
+
+        if target_dir.exists():
+            assert list(target_dir.iterdir()) == []
+
 
 # ---------------------------------------------------------------------------
 # uninstall_skill
@@ -491,6 +510,22 @@ class TestUninstallSkill:
 
         assert not (target_dir / "my-skill").exists()
         assert not (target_dir / "review-shared").exists()
+
+    @pytest.mark.parametrize(
+        "bad_name",
+        ["../escape", "a/b", ".", "..", "UPPER", "has space", "under_score"],
+    )
+    def test_rejects_invalid_skill_name(
+        self,
+        skills_root: Path,
+        target_dir: Path,
+        bad_name: str,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        with pytest.raises(SystemExit):
+            uninstall_skill(bad_name, target_dir, skills_root)
+
+        assert "invalid skill name" in capsys.readouterr().err
 
 
 # ---------------------------------------------------------------------------
