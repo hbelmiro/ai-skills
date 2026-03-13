@@ -247,6 +247,19 @@ class TestValidateSkill:
         errors = validate_skill(skills_root / "empty-desc", skills_root)
         assert any("description" in e.lower() for e in errors)
 
+    def test_invalid_yaml_frontmatter(self, skills_root: Path) -> None:
+        content = dedent("""\
+            ---
+            name: [unclosed
+            ---
+
+            # Bad YAML
+        """)
+        _make_skill(skills_root, "bad-yaml", content)
+        errors = validate_skill(skills_root / "bad-yaml", skills_root)
+        assert any("invalid yaml" in e.lower() for e in errors)
+        assert not any("missing 'name'" in e for e in errors)
+
     def test_returns_all_errors_at_once(self, skills_root: Path) -> None:
         content = dedent("""\
             ---
@@ -453,6 +466,17 @@ class TestInstallSkill:
         assert (target_dir / "my-skill").resolve() == (
             skills_root / "my-skill"
         ).resolve()
+
+    def test_conflict_does_not_install_deps(
+        self, skills_root: Path, target_dir: Path, skill_with_dep: Path
+    ) -> None:
+        target_dir.mkdir(parents=True)
+        (target_dir / "my-skill").mkdir()
+
+        install_skill("my-skill", target_dir, skills_root)
+
+        assert not (target_dir / "my-skill").is_symlink()
+        assert not (target_dir / "review-shared").exists()
 
     def test_validate_blocks_install(self, skills_root: Path, target_dir: Path) -> None:
         _make_skill(skills_root, "bad-skill")

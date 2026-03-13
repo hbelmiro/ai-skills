@@ -75,9 +75,11 @@ def _validate_frontmatter(text: str, skill_name: str) -> list[str]:
     try:
         fields = yaml.safe_load(fm_match.group(1))
     except yaml.YAMLError:
-        fields = None
+        errors.append(f"{skill_name}: {_SKILL_MD} has invalid YAML frontmatter")
+        return errors
     if not isinstance(fields, dict):
-        fields = {}
+        errors.append(f"{skill_name}: {_SKILL_MD} has invalid YAML frontmatter")
+        return errors
 
     name_val = fields.get("name")
     if not isinstance(name_val, str) or not name_val.strip():
@@ -205,7 +207,7 @@ def _create_symlink(
         return False
 
     try:
-        link.symlink_to(source)
+        link.symlink_to(source, target_is_directory=source.is_dir())
     except OSError as exc:
         print(
             f"error: failed to create symlink {link} -> {source}: {exc}",
@@ -244,8 +246,11 @@ def install_skill(
 
     created: list[str] = []
 
+    skill_link = target_dir / skill_name
     if _create_symlink(skill_name, skill_dir, target_dir, force=force):
         created.append(skill_name)
+    elif not (skill_link.is_symlink() and skill_link.resolve() == skill_dir.resolve()):
+        return
 
     deps = detect_dependencies(skill_dir)
     for dep_name in sorted(deps):
