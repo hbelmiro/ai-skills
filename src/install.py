@@ -121,6 +121,33 @@ def installed_skills(target_dir: Path, skills_root: Path) -> set[str]:
     return result
 
 
+def _handle_existing_link(link: Path, source: Path, *, force: bool) -> bool:
+    """Handle a conflict at *link*. Returns True if *link* was cleared and is ready for creation."""
+    if not link.exists() and not link.is_symlink():
+        return True
+
+    if not link.is_symlink():
+        kind = "directory" if link.is_dir() else "file"
+        print(
+            f"warning: {link} is an existing {kind}, skipping (will never overwrite non-symlink paths)",
+            file=sys.stderr,
+        )
+        return False
+
+    if link.resolve() == source.resolve():
+        return False
+
+    if force:
+        link.unlink()
+        return True
+
+    print(
+        f"warning: {link} is a symlink to {link.resolve()}, skipping (use --force to replace)",
+        file=sys.stderr,
+    )
+    return False
+
+
 def _create_symlink(
     name: str,
     source: Path,
@@ -134,24 +161,8 @@ def _create_symlink(
     """
     link = target_dir / name
 
-    if link.exists() or link.is_symlink():
-        if link.is_symlink():
-            if link.resolve() == source.resolve():
-                return False
-            if force:
-                link.unlink()
-            else:
-                print(
-                    f"warning: {link} is a symlink to {link.resolve()}, skipping (use --force to replace)",
-                    file=sys.stderr,
-                )
-                return False
-        else:
-            print(
-                f"warning: {link} is a real directory, skipping (will never overwrite real directories)",
-                file=sys.stderr,
-            )
-            return False
+    if not _handle_existing_link(link, source, force=force):
+        return False
 
     try:
         link.symlink_to(source)

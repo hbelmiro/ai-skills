@@ -368,6 +368,23 @@ class TestInstallSkill:
 
         assert not (target_dir / "my-skill").is_symlink()
 
+    def test_conflict_real_file_warns_and_skips(
+        self,
+        skills_root: Path,
+        target_dir: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _make_skill(skills_root, "my-skill", _valid_frontmatter("my-skill"))
+        target_dir.mkdir(parents=True)
+        (target_dir / "my-skill").write_text("I am a file", encoding="utf-8")
+
+        install_skill("my-skill", target_dir, skills_root)
+
+        assert not (target_dir / "my-skill").is_symlink()
+        assert (target_dir / "my-skill").read_text(encoding="utf-8") == "I am a file"
+        captured = capsys.readouterr()
+        assert "existing file" in captured.err
+
     def test_conflict_symlink_warns_and_skips(
         self, skills_root: Path, target_dir: Path
     ) -> None:
