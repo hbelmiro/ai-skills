@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -14,6 +15,11 @@ from install import (
     detect_dependencies,
     install_skill,
     installed_skills,
+    load_installed_db,
+    reinstall_all,
+    remove_installed_entry,
+    save_installed_db,
+    track_installed_entry,
     uninstall_skill,
     validate_skill,
 )
@@ -503,7 +509,7 @@ class TestInstallSkill:
         "bad_name",
         ["../escape", "a/b", ".", "..", "UPPER", "has space", "under_score"],
     )
-    def test_rejects_invalid_skill_name(
+    def test_install_rejects_invalid_skill_name(
         self,
         skills_root: Path,
         target_dir: Path,
@@ -530,7 +536,8 @@ class TestUninstallSkill:
         install_skill("my-skill", target_dir, skills_root)
         assert (target_dir / "my-skill").is_symlink()
 
-        uninstall_skill("my-skill", target_dir, skills_root)
+        removed = uninstall_skill("my-skill", target_dir, skills_root)
+        assert removed is True
 
         assert not (target_dir / "my-skill").exists()
 
@@ -540,7 +547,8 @@ class TestUninstallSkill:
         _make_skill(skills_root, "my-skill", _valid_frontmatter("my-skill"))
         target_dir.mkdir(parents=True)
 
-        uninstall_skill("my-skill", target_dir, skills_root)
+        removed = uninstall_skill("my-skill", target_dir, skills_root)
+        assert removed is False
 
         captured = capsys.readouterr()
         assert "not installed" in captured.err.lower()
@@ -550,7 +558,8 @@ class TestUninstallSkill:
     ) -> None:
         assert not target_dir.exists()
 
-        uninstall_skill("my-skill", target_dir, skills_root)
+        removed = uninstall_skill("my-skill", target_dir, skills_root)
+        assert removed is False
 
         captured = capsys.readouterr()
         assert "not installed" in captured.err.lower()
@@ -563,7 +572,8 @@ class TestUninstallSkill:
         other.mkdir()
         (target_dir / "my-skill").symlink_to(other)
 
-        uninstall_skill("my-skill", target_dir, skills_root)
+        removed = uninstall_skill("my-skill", target_dir, skills_root)
+        assert removed is False
 
         assert (target_dir / "my-skill").is_symlink()
         assert (target_dir / "my-skill").resolve() == other.resolve()
@@ -577,7 +587,8 @@ class TestUninstallSkill:
         install_skill("skill-a", target_dir, skills_root)
         install_skill("skill-b", target_dir, skills_root)
 
-        uninstall_skill("skill-a", target_dir, skills_root)
+        removed = uninstall_skill("skill-a", target_dir, skills_root)
+        assert removed is True
 
         assert not (target_dir / "skill-a").exists()
         assert (target_dir / "skill-b").is_symlink()
@@ -587,7 +598,8 @@ class TestUninstallSkill:
         self, skills_root: Path, target_dir: Path, skill_with_dep: Path
     ) -> None:
         install_skill("my-skill", target_dir, skills_root)
-        uninstall_skill("my-skill", target_dir, skills_root)
+        removed = uninstall_skill("my-skill", target_dir, skills_root)
+        assert removed is True
 
         assert not (target_dir / "my-skill").exists()
         assert not (target_dir / "review-shared").exists()
@@ -600,7 +612,8 @@ class TestUninstallSkill:
 
         shutil.rmtree(skills_root / "my-skill")
 
-        uninstall_skill("my-skill", target_dir, skills_root)
+        removed = uninstall_skill("my-skill", target_dir, skills_root)
+        assert removed is True
 
         assert not (target_dir / "my-skill").exists()
         assert not (target_dir / "review-shared").exists()
@@ -609,7 +622,7 @@ class TestUninstallSkill:
         "bad_name",
         ["../escape", "a/b", ".", "..", "UPPER", "has space", "under_score"],
     )
-    def test_rejects_invalid_skill_name(
+    def test_uninstall_rejects_invalid_skill_name(
         self,
         skills_root: Path,
         target_dir: Path,
@@ -656,13 +669,20 @@ class TestInstalledSkills:
 INSTALL_SCRIPT = Path(__file__).resolve().parent.parent / "install.py"
 
 
-def _run_cli(*args: str) -> subprocess.CompletedProcess[str]:
+def _run_cli(
+    *args: str, env: dict[str, str] | None = None
+) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
         [sys.executable, str(INSTALL_SCRIPT), *args],
         capture_output=True,
+        env=env,
         text=True,
         timeout=10,
     )
+
+
+def _db_path_for(home_dir: Path) -> Path:
+    return home_dir / ".ai-skills" / "installed-skills.yaml"
 
 
 class TestCli:
@@ -677,6 +697,566 @@ class TestCli:
     def test_neither_personal_nor_project_errors(self) -> None:
         result = _run_cli("--skill", "my-skill")
         assert result.returncode != 0
+
+    def test_reinstall_all_does_not_require_skill(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        monkeypatch.setenv("HOME", str(fake_home))
+        env = dict(os.environ)
+        env["HOME"] = str(fake_home)
+
+        result = _run_cli("--reinstall-all", env=env)
+        assert result.returncode == 0
+
+    def test_reinstall_all_conflicts_with_skill_target_flags(self) -> None:
+        result = _run_cli(
+            "--reinstall-all", "--skill", "my-skill", "--project", "/tmp/proj"
+        )
+        assert result.returncode != 0
+
+    def test_reinstall_all_conflicts_with_uninstall(self) -> None:
+        result = _run_cli("--reinstall-all", "--uninstall")
+        assert result.returncode != 0
+
+
+class TestReinstallAllAndDb:
+    @staticmethod
+    def _setup_home(
+        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> tuple[Path, Path]:
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        monkeypatch.setenv("HOME", str(fake_home))
+        return fake_home, _db_path_for(fake_home)
+
+    def _setup_conflicting_personal_reinstall_case(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> tuple[Path, Path, Path]:
+        fake_home, db_path = self._setup_home(tmp_path, monkeypatch)
+        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
+        target_dir = fake_home / ".cursor" / "skills"
+        target_dir.mkdir(parents=True)
+        other = tmp_path / "other-dir"
+        other.mkdir()
+        (target_dir / "simple").symlink_to(other)
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "skill": "simple",
+                        "target": "personal",
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ]
+            },
+            db_path=db_path,
+        )
+        return target_dir, other, db_path
+
+    def test_install_tracks_personal_record(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_home, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
+        target_dir = fake_home / ".cursor" / "skills"
+        install_skill("simple", target_dir, skills_root)
+        track_installed_entry("simple", personal=True, db_path=db_path)
+
+        db = load_installed_db(db_path=db_path)
+        assert db["entries"] == [
+            {
+                "skill": "simple",
+                "target": "personal",
+                "status": "ok",
+                "last_error": None,
+                "updated_at": db["entries"][0]["updated_at"],
+            }
+        ]
+
+    def test_install_tracks_project_record_with_path(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        project_dir = tmp_path / "my-project"
+        project_dir.mkdir()
+        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
+        target_dir = project_dir / ".cursor" / "skills"
+        install_skill("simple", target_dir, skills_root)
+        track_installed_entry("simple", project=project_dir, db_path=db_path)
+
+        db = load_installed_db(db_path=db_path)
+        assert db["entries"] == [
+            {
+                "skill": "simple",
+                "target": "project",
+                "project_path": str(project_dir.resolve()),
+                "status": "ok",
+                "last_error": None,
+                "updated_at": db["entries"][0]["updated_at"],
+            }
+        ]
+
+    def test_upsert_prevents_duplicate_records_for_same_key(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_home, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
+        target_dir = fake_home / ".cursor" / "skills"
+        install_skill("simple", target_dir, skills_root)
+
+        track_installed_entry("simple", personal=True, db_path=db_path)
+        track_installed_entry("simple", personal=True, db_path=db_path)
+
+        db = load_installed_db(db_path=db_path)
+        assert len(db["entries"]) == 1
+
+    def test_uninstall_removes_matching_record_only(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        project_a = tmp_path / "a"
+        project_b = tmp_path / "b"
+        project_a.mkdir()
+        project_b.mkdir()
+        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
+
+        track_installed_entry("simple", project=project_a, db_path=db_path)
+        track_installed_entry("simple", project=project_b, db_path=db_path)
+
+        removed = remove_installed_entry("simple", project=project_a, db_path=db_path)
+        assert removed is True
+
+        db = load_installed_db(db_path=db_path)
+        assert db["entries"] == [
+            {
+                "skill": "simple",
+                "target": "project",
+                "project_path": str(project_b.resolve()),
+                "status": "ok",
+                "last_error": None,
+                "updated_at": db["entries"][0]["updated_at"],
+            }
+        ]
+
+    def test_uninstall_removes_entry_even_if_errored(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "skill": "bad-skill",
+                        "target": "personal",
+                        "status": "error",
+                        "last_error": "boom",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ]
+            },
+            db_path=db_path,
+        )
+        removed = remove_installed_entry("bad-skill", personal=True, db_path=db_path)
+        assert removed is True
+        db = load_installed_db(db_path=db_path)
+        assert db["entries"] == []
+
+    def test_uninstall_noop_should_not_remove_db_record(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_home, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
+        track_installed_entry("simple", personal=True, db_path=db_path)
+
+        target_dir = fake_home / ".cursor" / "skills"
+        removed = uninstall_skill("simple", target_dir, skills_root)
+        assert removed is False
+
+        db = load_installed_db(db_path=db_path)
+        assert len(db["entries"]) == 1
+        assert db["entries"][0]["skill"] == "simple"
+
+    def test_reinstall_all_missing_db_is_noop(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        self._setup_home(tmp_path, monkeypatch)
+
+        report = reinstall_all(skills_root=skills_root)
+        assert report.total == 0
+        assert report.succeeded == 0
+        assert report.failed == 0
+
+    def test_reinstall_all_empty_entries_is_noop(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        save_installed_db({"entries": []}, db_path=db_path)
+        report = reinstall_all(skills_root=skills_root, db_path=db_path)
+        assert report.total == 0
+        assert report.succeeded == 0
+        assert report.failed == 0
+
+    def test_reinstall_all_replays_personal_and_project_entries(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_home, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
+
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "skill": "simple",
+                        "target": "personal",
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    },
+                    {
+                        "skill": "simple",
+                        "target": "project",
+                        "project_path": str(project_dir),
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:01+00:00",
+                    },
+                ]
+            },
+            db_path=db_path,
+        )
+
+        report = reinstall_all(skills_root=skills_root, db_path=db_path)
+        assert report.total == 2
+        assert report.succeeded == 2
+        assert report.failed == 0
+        assert (fake_home / ".cursor" / "skills" / "simple").is_symlink()
+        assert (project_dir / ".cursor" / "skills" / "simple").is_symlink()
+
+    def test_reinstall_all_continues_on_failure_and_marks_error(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        _make_skill(skills_root, "good-skill", _valid_frontmatter("good-skill"))
+
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "skill": "missing-skill",
+                        "target": "personal",
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    },
+                    {
+                        "skill": "good-skill",
+                        "target": "personal",
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:01+00:00",
+                    },
+                ]
+            },
+            db_path=db_path,
+        )
+
+        report = reinstall_all(skills_root=skills_root, db_path=db_path)
+        assert report.total == 2
+        assert report.succeeded == 1
+        assert report.failed == 1
+
+        db = load_installed_db(db_path=db_path)
+        bad = next(e for e in db["entries"] if e["skill"] == "missing-skill")
+        good = next(e for e in db["entries"] if e["skill"] == "good-skill")
+        assert bad["status"] == "error"
+        assert isinstance(bad.get("last_error"), str)
+        assert bad["last_error"]
+        assert good["status"] == "ok"
+        assert good.get("last_error") in (None, "")
+
+    def test_reinstall_all_prints_final_report(
+        self,
+        skills_root: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "skill": "missing-skill",
+                        "target": "personal",
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ]
+            },
+            db_path=db_path,
+        )
+        reinstall_all(skills_root=skills_root, db_path=db_path)
+        err = capsys.readouterr().err
+        assert "reinstall-all report" in err.lower()
+        assert "total: 1" in err.lower()
+        assert "failed: 1" in err.lower()
+        assert "missing-skill" in err
+
+    def test_reinstall_all_marks_missing_skill_field_as_error(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "target": "personal",
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ]
+            },
+            db_path=db_path,
+        )
+        report = reinstall_all(skills_root=skills_root, db_path=db_path)
+        assert report.failed == 1
+        db = load_installed_db(db_path=db_path)
+        assert db["entries"][0]["status"] == "error"
+
+    def test_reinstall_all_marks_project_missing_path_as_error(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "skill": "simple",
+                        "target": "project",
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ]
+            },
+            db_path=db_path,
+        )
+        report = reinstall_all(skills_root=skills_root, db_path=db_path)
+        assert report.failed == 1
+        db = load_installed_db(db_path=db_path)
+        assert db["entries"][0]["status"] == "error"
+
+    def test_reinstall_all_marks_unknown_target_as_error(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "skill": "simple",
+                        "target": "unknown",
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ]
+            },
+            db_path=db_path,
+        )
+        report = reinstall_all(skills_root=skills_root, db_path=db_path)
+        assert report.failed == 1
+
+    def test_project_path_is_normalized_on_write(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        raw_project = tmp_path / "nested" / ".." / "project-dir"
+        (tmp_path / "project-dir").mkdir()
+
+        track_installed_entry("simple", project=raw_project, db_path=db_path)
+        db = load_installed_db(db_path=db_path)
+        assert db["entries"][0]["project_path"] == str(
+            (tmp_path / "project-dir").resolve()
+        )
+
+    def test_reinstall_all_uses_normalized_project_path(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
+        project_dir = tmp_path / "project-dir"
+        project_dir.mkdir()
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "skill": "simple",
+                        "target": "project",
+                        "project_path": str(project_dir / ".." / "project-dir"),
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ]
+            },
+            db_path=db_path,
+        )
+
+        report = reinstall_all(skills_root=skills_root, db_path=db_path)
+        assert report.succeeded == 1
+        assert (project_dir / ".cursor" / "skills" / "simple").is_symlink()
+
+    def test_reinstall_all_without_force_keeps_conflicting_symlink(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        target_dir, other, db_path = self._setup_conflicting_personal_reinstall_case(
+            skills_root, tmp_path, monkeypatch
+        )
+
+        report = reinstall_all(skills_root=skills_root, db_path=db_path, force=False)
+        assert report.failed == 1
+        assert (target_dir / "simple").resolve() == other.resolve()
+
+    def test_reinstall_all_with_force_replaces_conflicting_symlink(
+        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        target_dir, _, db_path = self._setup_conflicting_personal_reinstall_case(
+            skills_root, tmp_path, monkeypatch
+        )
+
+        report = reinstall_all(skills_root=skills_root, db_path=db_path, force=True)
+        assert report.succeeded == 1
+        assert (target_dir / "simple").resolve() == (skills_root / "simple").resolve()
+
+    def test_save_db_permission_error_surfaces_actionable_message(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        fake_home, _ = self._setup_home(tmp_path, monkeypatch)
+
+        blocked = fake_home / ".ai-skills"
+        blocked.write_text("not-a-directory", encoding="utf-8")
+
+        with pytest.raises(SystemExit):
+            save_installed_db({"entries": []})
+
+    def test_reinstall_all_reports_db_save_failure(
+        self,
+        skills_root: Path,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "skill": "simple",
+                        "target": "personal",
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ]
+            },
+            db_path=db_path,
+        )
+
+        def _boom(*_: object, **__: object) -> None:
+            raise OSError("write failed")
+
+        monkeypatch.setattr("install.os.replace", _boom)
+        with pytest.raises(SystemExit):
+            reinstall_all(skills_root=skills_root, db_path=db_path)
+        assert "write failed" in capsys.readouterr().err
+
+    def test_save_db_replace_failure_preserves_existing_content(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+        save_installed_db(
+            {
+                "entries": [
+                    {
+                        "skill": "stable",
+                        "target": "personal",
+                        "status": "ok",
+                        "updated_at": "2026-01-01T00:00:00+00:00",
+                    }
+                ]
+            },
+            db_path=db_path,
+        )
+        before = db_path.read_text(encoding="utf-8")
+
+        def _boom(*_: object, **__: object) -> None:
+            raise OSError("replace failed")
+
+        monkeypatch.setattr("install.os.replace", _boom)
+        with pytest.raises(SystemExit):
+            save_installed_db(
+                {
+                    "entries": [
+                        {
+                            "skill": "changed",
+                            "target": "personal",
+                            "status": "ok",
+                            "updated_at": "2026-01-02T00:00:00+00:00",
+                        }
+                    ]
+                },
+                db_path=db_path,
+            )
+
+        assert db_path.read_text(encoding="utf-8") == before
+
+    def test_load_db_backfills_missing_status_and_updated_at(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+
+        save_installed_db(
+            {"entries": [{"skill": "simple", "target": "personal"}]}, db_path=db_path
+        )
+        db = load_installed_db(db_path=db_path)
+        entry = db["entries"][0]
+        assert entry["status"] == "ok"
+        assert entry["updated_at"]
+
+    def test_load_db_invalid_top_level_schema_fails(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        db_path.write_text("- invalid\n", encoding="utf-8")
+
+        with pytest.raises(SystemExit):
+            load_installed_db(db_path=db_path)
+
+    def test_load_db_invalid_entries_schema_fails(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _, db_path = self._setup_home(tmp_path, monkeypatch)
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        db_path.write_text("entries: not-a-list\n", encoding="utf-8")
+
+        with pytest.raises(SystemExit):
+            load_installed_db(db_path=db_path)
 
 
 # ---------------------------------------------------------------------------
@@ -718,3 +1298,32 @@ class TestSmoke:
 
         assert not (target_dir / "python-code-review").exists()
         assert not (target_dir / "review-shared").exists()
+
+    def test_reinstall_all_via_cli(self, tmp_path: Path) -> None:
+        fake_home = tmp_path / "home"
+        fake_home.mkdir()
+        env = dict(os.environ)
+        env["HOME"] = str(fake_home)
+
+        project_dir = tmp_path / "project"
+        project_dir.mkdir()
+        target_dir = project_dir / ".cursor" / "skills"
+
+        result = _run_cli(
+            "--skill", "python-code-review", "--project", str(project_dir), env=env
+        )
+        assert result.returncode == 0, result.stderr
+        assert (target_dir / "python-code-review").is_symlink()
+        assert (target_dir / "review-shared").is_symlink()
+
+        (target_dir / "python-code-review").unlink()
+        (target_dir / "review-shared").unlink()
+        assert not (target_dir / "python-code-review").exists()
+        assert not (target_dir / "review-shared").exists()
+
+        result = _run_cli("--reinstall-all", env=env)
+        assert result.returncode == 0, result.stderr
+        assert "reinstall-all report" in result.stderr.lower()
+        assert "failed: 0" in result.stderr.lower()
+        assert (target_dir / "python-code-review").is_symlink()
+        assert (target_dir / "review-shared").is_symlink()
