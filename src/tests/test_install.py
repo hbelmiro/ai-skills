@@ -260,6 +260,18 @@ class TestValidateSkill:
         assert any("nonexistent-dep" in e for e in errors)
         assert len(errors) >= 2
 
+    def test_crlf_frontmatter(self, skills_root: Path) -> None:
+        content = "---\r\nname: crlf-skill\r\ndescription: A CRLF skill.\r\n---\r\n\r\n# crlf-skill\r\n"
+        _make_skill(skills_root, "crlf-skill", content)
+        errors = validate_skill(skills_root / "crlf-skill", skills_root)
+        assert errors == []
+
+    def test_leading_blank_lines_before_frontmatter(self, skills_root: Path) -> None:
+        content = "\n\n---\nname: blank-lead\ndescription: Leading blanks.\n---\n\n# blank-lead\n"
+        _make_skill(skills_root, "blank-lead", content)
+        errors = validate_skill(skills_root / "blank-lead", skills_root)
+        assert errors == []
+
     def test_missing_dep_directory(self, skills_root: Path) -> None:
         _make_skill(
             skills_root,

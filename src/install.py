@@ -7,10 +7,11 @@ import re
 import sys
 from pathlib import Path
 
+import yaml
+
 _SIBLING_REF_RE = re.compile(r"`\.\./([^/`\s]+)/")
 _FILE_REF_RE = re.compile(r"`\.\./([^/`\s]+)/([^`\s]+)")
-_FRONTMATTER_RE = re.compile(r"^---\s*\n(.*?)\n---", re.DOTALL)
-_FIELD_RE = re.compile(r"^(\w+):\s*(.+)", re.MULTILINE)
+_FRONTMATTER_RE = re.compile(r"^\s*---\s*\r?\n(.*?)\r?\n---", re.DOTALL)
 
 _SKILLS_DIR_NAME = "skills"
 _SKILL_MD = "SKILL.md"
@@ -75,10 +76,17 @@ def validate_skill(skill_dir: Path, skills_root: Path) -> list[str]:
 
     fm_match = _FRONTMATTER_RE.match(text)
     if fm_match:
-        fields = dict(_FIELD_RE.findall(fm_match.group(1)))
-        if not fields.get("name", "").strip():
+        try:
+            fields = yaml.safe_load(fm_match.group(1))
+        except yaml.YAMLError:
+            fields = None
+        if not isinstance(fields, dict):
+            fields = {}
+        name_val = fields.get("name")
+        if not isinstance(name_val, str) or not name_val.strip():
             errors.append(f"{skill_dir.name}: {_SKILL_MD} frontmatter missing 'name'")
-        if not fields.get("description", "").strip():
+        desc_val = fields.get("description")
+        if not isinstance(desc_val, str) or not desc_val.strip():
             errors.append(
                 f"{skill_dir.name}: {_SKILL_MD} frontmatter missing 'description'"
             )
