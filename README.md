@@ -34,6 +34,7 @@ from utils.common import load_config, process_data
 - Run linting: `uv run ruff check .`
 - Run formatting: `uv run ruff format .`
 - Run type checking: `uv run ty check .`
+- Manage skill installs/reinstalls: see `skills/README.md` (`src/install.py`)
 
 ## Dependency Groups
 
