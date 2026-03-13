@@ -14,6 +14,27 @@ skill-name/
 └── pyproject.toml    # uv project configuration (optional)
 ```
 
+## Installing Skills
+
+Use the install script to symlink a skill into your Cursor configuration.
+The script auto-detects shared dependencies (e.g., `review-shared`) and symlinks them too.
+
+```bash
+# Install for all projects (personal)
+uv run python src/install.py --personal --skill go-code-review
+
+# Install for a specific project
+uv run python src/install.py --project /path/to/my-project --skill kubeflow-pipelines-review
+
+# Uninstall
+uv run python src/install.py --personal --uninstall --skill go-code-review
+
+# Force-replace conflicting symlinks
+uv run python src/install.py --personal --force --skill go-code-review
+```
+
+Run `uv run python src/install.py --help` for full usage.
+
 ## Naming Convention
 
 - Use lowercase with hyphens for directory names (e.g., `text-summarization`, `image-classification`)
