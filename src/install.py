@@ -63,54 +63,73 @@ def detect_dependencies(skill_dir: Path) -> set[str]:
     return set(_SIBLING_REF_RE.findall(text))
 
 
-def validate_skill(skill_dir: Path, skills_root: Path) -> list[str]:
-    """Run all pre-install checks. Return a list of error strings (empty means valid)."""
+def _validate_frontmatter(text: str, skill_name: str) -> list[str]:
+    """Check YAML frontmatter for required *name* and *description* fields."""
     errors: list[str] = []
-
-    skill_md = skill_dir / _SKILL_MD
-    if not skill_md.is_file():
-        errors.append(f"{skill_dir.name}: missing {_SKILL_MD}")
+    fm_match = _FRONTMATTER_RE.match(text)
+    if not fm_match:
+        errors.append(f"{skill_name}: {_SKILL_MD} frontmatter missing 'name'")
+        errors.append(f"{skill_name}: {_SKILL_MD} frontmatter missing 'description'")
         return errors
 
-    text = skill_md.read_text(encoding="utf-8")
+    try:
+        fields = yaml.safe_load(fm_match.group(1))
+    except yaml.YAMLError:
+        fields = None
+    if not isinstance(fields, dict):
+        fields = {}
 
-    fm_match = _FRONTMATTER_RE.match(text)
-    if fm_match:
-        try:
-            fields = yaml.safe_load(fm_match.group(1))
-        except yaml.YAMLError:
-            fields = None
-        if not isinstance(fields, dict):
-            fields = {}
-        name_val = fields.get("name")
-        if not isinstance(name_val, str) or not name_val.strip():
-            errors.append(f"{skill_dir.name}: {_SKILL_MD} frontmatter missing 'name'")
-        desc_val = fields.get("description")
-        if not isinstance(desc_val, str) or not desc_val.strip():
-            errors.append(
-                f"{skill_dir.name}: {_SKILL_MD} frontmatter missing 'description'"
-            )
-    else:
-        errors.append(f"{skill_dir.name}: {_SKILL_MD} frontmatter missing 'name'")
-        errors.append(
-            f"{skill_dir.name}: {_SKILL_MD} frontmatter missing 'description'"
-        )
+    name_val = fields.get("name")
+    if not isinstance(name_val, str) or not name_val.strip():
+        errors.append(f"{skill_name}: {_SKILL_MD} frontmatter missing 'name'")
+    desc_val = fields.get("description")
+    if not isinstance(desc_val, str) or not desc_val.strip():
+        errors.append(f"{skill_name}: {_SKILL_MD} frontmatter missing 'description'")
+    return errors
 
+
+def _validate_dependencies(skill_dir: Path, skills_root: Path) -> list[str]:
+    """Check that dependency names are valid and their directories exist."""
+    errors: list[str] = []
     for dep_name in detect_dependencies(skill_dir):
-        dep_dir = skills_root / dep_name
-        if not dep_dir.is_dir():
+        if not _SKILL_NAME_RE.match(dep_name):
+            errors.append(f"{skill_dir.name}: invalid dependency name '{dep_name}'")
+        elif not (skills_root / dep_name).is_dir():
             errors.append(
                 f"{skill_dir.name}: dependency directory '{dep_name}' not found under {skills_root}"
             )
+    return errors
 
+
+def _validate_file_refs(text: str, skill_name: str, skills_root: Path) -> list[str]:
+    """Check that ``../sibling/file`` references don't escape and exist on disk."""
+    errors: list[str] = []
     for m in _FILE_REF_RE.finditer(text):
         sibling, rel_file = m.group(1), m.group(2)
-        full_path = skills_root / sibling / rel_file
-        if (skills_root / sibling).is_dir() and not full_path.is_file():
+        sibling_dir = skills_root / sibling
+        full_path = (sibling_dir / rel_file).resolve()
+        if not full_path.is_relative_to(sibling_dir.resolve()):
             errors.append(
-                f"{skill_dir.name}: referenced file '../{sibling}/{rel_file}' does not exist"
+                f"{skill_name}: referenced file '../{sibling}/{rel_file}' escapes outside '{sibling}/'"
             )
+        elif sibling_dir.is_dir() and not full_path.is_file():
+            errors.append(
+                f"{skill_name}: referenced file '../{sibling}/{rel_file}' does not exist"
+            )
+    return errors
 
+
+def validate_skill(skill_dir: Path, skills_root: Path) -> list[str]:
+    """Run all pre-install checks. Return a list of error strings (empty means valid)."""
+    skill_md = skill_dir / _SKILL_MD
+    if not skill_md.is_file():
+        return [f"{skill_dir.name}: missing {_SKILL_MD}"]
+
+    text = skill_md.read_text(encoding="utf-8")
+    errors: list[str] = []
+    errors.extend(_validate_frontmatter(text, skill_dir.name))
+    errors.extend(_validate_dependencies(skill_dir, skills_root))
+    errors.extend(_validate_file_refs(text, skill_dir.name, skills_root))
     return errors
 
 
@@ -127,6 +146,19 @@ def installed_skills(target_dir: Path, skills_root: Path) -> set[str]:
         if target.is_relative_to(resolved_root) and (target / _SKILL_MD).is_file():
             result.add(entry.name)
     return result
+
+
+def _orphaned_dep_candidates(target_dir: Path, skills_root: Path) -> set[str]:
+    """Return names of symlinks in *target_dir* that point into *skills_root* but are not skills."""
+    resolved_root = skills_root.resolve()
+    candidates: set[str] = set()
+    for entry in target_dir.iterdir():
+        if not entry.is_symlink():
+            continue
+        target = entry.resolve()
+        if target.is_relative_to(resolved_root) and not (target / _SKILL_MD).is_file():
+            candidates.add(entry.name)
+    return candidates
 
 
 def _handle_existing_link(link: Path, source: Path, *, force: bool) -> bool:
@@ -268,6 +300,9 @@ def uninstall_skill(
         remaining_dir = skills_root / remaining
         if remaining_dir.is_dir():
             needed_deps |= detect_dependencies(remaining_dir)
+
+    if not deps:
+        deps = _orphaned_dep_candidates(target_dir, skills_root)
 
     for dep_name in sorted(deps):
         dep_link = target_dir / dep_name

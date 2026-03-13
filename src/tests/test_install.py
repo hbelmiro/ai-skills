@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -291,6 +292,33 @@ class TestValidateSkill:
         errors = validate_skill(skills_root / "my-skill", skills_root)
         assert any("missing-file.md" in e for e in errors)
 
+    def test_invalid_dep_name_flagged(self, skills_root: Path) -> None:
+        content = dedent("""\
+            ---
+            name: my-skill
+            description: A skill.
+            ---
+
+            1. Read `../../escape/file.md`.
+        """)
+        _make_skill(skills_root, "my-skill", content)
+        errors = validate_skill(skills_root / "my-skill", skills_root)
+        assert any("invalid dependency" in e.lower() for e in errors)
+
+    def test_file_ref_path_traversal_flagged(self, skills_root: Path) -> None:
+        content = dedent("""\
+            ---
+            name: my-skill
+            description: A skill.
+            ---
+
+            1. Read `../review-shared/../../etc/passwd`.
+        """)
+        _make_skill(skills_root, "review-shared", extra_files={"checklist.md": "ok"})
+        _make_skill(skills_root, "my-skill", content)
+        errors = validate_skill(skills_root / "my-skill", skills_root)
+        assert any("escapes" in e.lower() or "outside" in e.lower() for e in errors)
+
 
 # ---------------------------------------------------------------------------
 # install_skill
@@ -535,6 +563,19 @@ class TestUninstallSkill:
         self, skills_root: Path, target_dir: Path, skill_with_dep: Path
     ) -> None:
         install_skill("my-skill", target_dir, skills_root)
+        uninstall_skill("my-skill", target_dir, skills_root)
+
+        assert not (target_dir / "my-skill").exists()
+        assert not (target_dir / "review-shared").exists()
+
+    def test_cleans_deps_when_source_dir_deleted(
+        self, skills_root: Path, target_dir: Path, skill_with_dep: Path
+    ) -> None:
+        install_skill("my-skill", target_dir, skills_root)
+        assert (target_dir / "review-shared").is_symlink()
+
+        shutil.rmtree(skills_root / "my-skill")
+
         uninstall_skill("my-skill", target_dir, skills_root)
 
         assert not (target_dir / "my-skill").exists()
