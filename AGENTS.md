@@ -6,7 +6,6 @@ This file tracks AI agents and skills within the monorepo.
 
 | Name | Category | Description | Status | Location |
 |------|----------|-------------|--------|----------|
-| example-skill | Template | Template agent for demonstrating structure | Active | `skills/example-skill/` |
 | go-code-review | Code Review | General Go code review workflow for correctness, reliability, security, and tests | Active | `skills/go-code-review/` |
 | python-code-review | Code Review | General Python code review workflow for correctness, security, type safety, and tests | Active | `skills/python-code-review/` |
 | kubeflow-pipelines-review | Code Review | KFP-specific review workflow layered on Go and Python baseline checks and control-plane rules | Active | `skills/kubeflow-pipelines-review/` |

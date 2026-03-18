@@ -27,7 +27,7 @@ uv run ty check .        # Type check
 ### Adding Skills
 
 1. Create directory under `skills/your-skill/`
-2. Follow the structure in `skills/example-skill/`
+2. Follow the structure in `skills/README.md`
 3. Import shared utilities: `from utils.common import ...`
 
 ### Pull Requests

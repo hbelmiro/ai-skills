@@ -1,11 +1,9 @@
-# Review Shared Resources
+# General Review (Shared)
 
-Shared checklists and formatting guides used by review skills.
+General review requirements and formatting guides used by all review skills. Language-specific checklists live in the respective skills (go-code-review, python-code-review); depend on those skills to reuse them.
 
 ## Files
 
 - `general-review-requirements.md`: Mandatory review behavior across all review skills.
-- `go-review-checklist.md`: Baseline Go review checks.
-- `python-review-checklist.md`: Baseline Python review checks.
 - `severity-rubric.md`: Severity classification guidance.
 - `output-template.md`: Standard output structure for findings.
