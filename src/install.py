@@ -124,6 +124,14 @@ def _read_dependencies(skill_dir: Path) -> list[dict[str, str]]:
             file=sys.stderr,
         )
         raise SystemExit(1)
+    for i, dep in enumerate(raw):
+        if not isinstance(dep, dict) or "name" not in dep or "version" not in dep:
+            print(
+                f"error: dependency [{i}] in {skill_dir / _ARTIFACT_JSON} "
+                "must be an object with 'name' and 'version' keys",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
     return raw  # type: ignore[return-value]
 
 
@@ -152,7 +160,19 @@ def _resolve_all_deps(skill_name: str, skills_root: Path) -> list[str]:
         in_progress.add(name)
         skill_dir = skills_root / name
         for dep in _read_dependencies(skill_dir):
-            _walk(dep["name"])
+            dep_name = dep["name"]
+            _validate_skill_name(dep_name)
+            dep_dir = skills_root / dep_name
+            actual_version = _read_artifact_version(dep_dir)
+            declared_version = dep["version"]
+            if actual_version != declared_version:
+                print(
+                    f"error: {name} declares dependency {dep_name}:{declared_version} "
+                    f"but local artifact has version {actual_version}",
+                    file=sys.stderr,
+                )
+                raise SystemExit(1)
+            _walk(dep_name)
         in_progress.discard(name)
         visited.add(name)
         ordered.append(name)
@@ -177,10 +197,19 @@ def pack_and_push(
 
     version = _read_artifact_version(skill_dir)
     name = _read_artifact_name(skill_dir)
+    if name != skill_name:
+        print(
+            f"error: metadata.name '{name}' in {skill_dir / _ARTIFACT_JSON} "
+            f"does not match directory name '{skill_name}'",
+            file=sys.stderr,
+        )
+        raise SystemExit(1)
     ref = _reference(registry, name, version)
 
     layout_dir = skill_dir / _STRIATUM_LAYOUT_DIR
-    if layout_dir.exists():
+    if layout_dir.is_symlink() or (layout_dir.exists() and not layout_dir.is_dir()):
+        layout_dir.unlink()
+    elif layout_dir.is_dir():
         shutil.rmtree(layout_dir)
 
     _run([striatum, "validate"], cwd=skill_dir)

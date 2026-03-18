@@ -170,6 +170,24 @@ class TestArtifactReading:
         with pytest.raises(SystemExit):
             _read_dependencies(skills_root / "bad")
 
+    def test_read_dependencies_missing_name_key(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "bad",
+            raw_json='{"metadata": {"name": "bad", "version": "1.0.0"}, "dependencies": [{"version": "1.0.0"}]}',
+        )
+        with pytest.raises(SystemExit):
+            _read_dependencies(skills_root / "bad")
+
+    def test_read_dependencies_non_dict_element(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "bad",
+            raw_json='{"metadata": {"name": "bad", "version": "1.0.0"}, "dependencies": ["not-a-dict"]}',
+        )
+        with pytest.raises(SystemExit):
+            _read_dependencies(skills_root / "bad")
+
 
 # ---------------------------------------------------------------------------
 # _available_skills
@@ -280,6 +298,30 @@ class TestResolveAllDeps:
         with pytest.raises(SystemExit):
             _resolve_all_deps("self-ref", skills_root)
 
+    def test_version_mismatch_exits(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "dep", version="2.0.0")
+        _make_artifact(
+            skills_root,
+            "root",
+            dependencies=[{"name": "dep", "version": "1.0.0"}],
+        )
+        with pytest.raises(SystemExit):
+            _resolve_all_deps("root", skills_root)
+
+    def test_invalid_dep_name_exits(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "root",
+            raw_json=json.dumps(
+                {
+                    "metadata": {"name": "root", "version": "1.0.0"},
+                    "dependencies": [{"name": "../escape", "version": "1.0.0"}],
+                }
+            ),
+        )
+        with pytest.raises(SystemExit):
+            _resolve_all_deps("root", skills_root)
+
 
 # ---------------------------------------------------------------------------
 # _run
@@ -356,6 +398,54 @@ class TestPackAndPush:
             striatum="/usr/bin/striatum",
         )
         assert not (layout / "stale").exists()
+
+    def test_cleans_non_directory_layout(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        skill_dir = _make_artifact(skills_root, "my-skill")
+        layout = skill_dir / ".striatum"
+        layout.write_text("I am a file", encoding="utf-8")
+
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+        monkeypatch.setattr(
+            "install._run",
+            lambda *a, **kw: subprocess.CompletedProcess([], 0, "", ""),
+        )
+
+        pack_and_push(
+            "my-skill",
+            skills_root,
+            "localhost:5050/skills",
+            striatum="/usr/bin/striatum",
+        )
+        assert not layout.exists()
+
+    def test_name_mismatch_exits(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(
+            skills_root,
+            "my-skill",
+            raw_json=json.dumps(
+                {
+                    "metadata": {"name": "different-name", "version": "1.0.0"},
+                    "spec": {"entrypoint": "SKILL.md", "files": ["SKILL.md"]},
+                }
+            ),
+        )
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+        monkeypatch.setattr(
+            "install._run",
+            lambda *a, **kw: subprocess.CompletedProcess([], 0, "", ""),
+        )
+
+        with pytest.raises(SystemExit):
+            pack_and_push(
+                "my-skill",
+                skills_root,
+                "localhost:5050/skills",
+                striatum="/usr/bin/striatum",
+            )
 
     def test_rejects_invalid_skill_name(self, skills_root: Path) -> None:
         with pytest.raises(SystemExit):
