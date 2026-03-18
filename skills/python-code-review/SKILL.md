@@ -12,7 +12,7 @@ Use this skill for Python-only reviews. Apply every checklist item explicitly.
 ## Review Workflow
 
 1. Read `../review-shared/general-review-requirements.md` and apply all requirements.
-2. Read `../review-shared/python-review-checklist.md` and execute every check.
+2. Read `python-review-checklist.md` and execute every check.
 3. Inspect changed and impacted call paths, not just edited lines.
 4. Prioritize findings by user impact and failure likelihood.
 5. Report findings using:

@@ -1,0 +1,17 @@
+{
+  "apiVersion": "striatum.dev/v1alpha1",
+  "kind": "Skill",
+  "metadata": {
+    "name": "review-shared",
+    "version": "1.0.0"
+  },
+  "spec": {
+    "entrypoint": "README.md",
+    "files": [
+      "README.md",
+      "general-review-requirements.md",
+      "severity-rubric.md",
+      "output-template.md"
+    ]
+  }
+}

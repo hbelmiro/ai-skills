@@ -1,9 +1,9 @@
-"""Tests for src/install.py — skill installer for Cursor."""
+"""Tests for src/install.py — skill installer via striatum."""
 
 from __future__ import annotations
 
+import json
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -12,16 +12,18 @@ from textwrap import dedent
 import pytest
 
 from install import (
-    detect_dependencies,
+    _available_skills,
+    _load_artifact,
+    _read_artifact_name,
+    _read_artifact_version,
+    _read_dependencies,
+    _resolve_all_deps,
+    _run,
+    _validate_skill_name,
     install_skill,
-    installed_skills,
-    load_installed_db,
+    pack_and_push,
     reinstall_all,
-    remove_installed_entry,
-    save_installed_db,
-    track_installed_entry,
     uninstall_skill,
-    validate_skill,
 )
 
 
@@ -30,34 +32,43 @@ from install import (
 # ---------------------------------------------------------------------------
 
 
-def _make_skill(
+def _make_artifact(
     skills_root: Path,
     name: str,
-    skill_md_content: str | None = None,
-    extra_files: dict[str, str] | None = None,
+    version: str = "1.0.0",
+    dependencies: list[dict[str, str]] | None = None,
+    with_skill_md: bool = True,
+    raw_json: str | None = None,
 ) -> Path:
-    """Create a minimal skill directory under *skills_root*."""
     skill_dir = skills_root / name
     skill_dir.mkdir(parents=True, exist_ok=True)
-    if skill_md_content is not None:
-        (skill_dir / "SKILL.md").write_text(skill_md_content, encoding="utf-8")
-    if extra_files:
-        for rel_path, content in extra_files.items():
-            p = skill_dir / rel_path
-            p.parent.mkdir(parents=True, exist_ok=True)
-            p.write_text(content, encoding="utf-8")
+    if raw_json is not None:
+        (skill_dir / "artifact.json").write_text(raw_json, encoding="utf-8")
+    else:
+        artifact: dict[str, object] = {
+            "apiVersion": "striatum.dev/v1alpha1",
+            "kind": "Skill",
+            "metadata": {"name": name, "version": version},
+            "spec": {"entrypoint": "SKILL.md", "files": ["SKILL.md"]},
+        }
+        if dependencies:
+            artifact["dependencies"] = dependencies
+        (skill_dir / "artifact.json").write_text(
+            json.dumps(artifact, indent=2), encoding="utf-8"
+        )
+    if with_skill_md:
+        (skill_dir / "SKILL.md").write_text(
+            dedent(f"""\
+                ---
+                name: {name}
+                description: A skill.
+                ---
+
+                # {name}
+            """),
+            encoding="utf-8",
+        )
     return skill_dir
-
-
-def _valid_frontmatter(name: str = "my-skill", description: str = "A skill.") -> str:
-    return dedent(f"""\
-        ---
-        name: {name}
-        description: {description}
-        ---
-
-        # {name}
-    """)
 
 
 @pytest.fixture()
@@ -65,278 +76,385 @@ def skills_root(tmp_path: Path) -> Path:
     return tmp_path / "skills"
 
 
-@pytest.fixture()
-def target_dir(tmp_path: Path) -> Path:
-    return tmp_path / "target"
+def _fake_run_factory() -> tuple[list[list[str]], object]:
+    """Return (calls_list, fake_run_fn) for monkeypatching _run."""
+    calls: list[list[str]] = []
 
+    def fake_run(args: list[str], **kwargs: object) -> subprocess.CompletedProcess[str]:
+        calls.append(args)
+        return subprocess.CompletedProcess(args, 0, "", "")
 
-def _skill_with_dep_content(
-    name: str = "my-skill",
-    description: str = "A skill.",
-    dep: str = "review-shared",
-    dep_file: str = "checklist.md",
-) -> str:
-    return dedent(f"""\
-        ---
-        name: {name}
-        description: {description}
-        ---
-
-        1. Read `../{dep}/{dep_file}`.
-    """)
-
-
-@pytest.fixture()
-def skill_with_dep(skills_root: Path) -> Path:
-    """A skill that depends on ``review-shared/checklist.md``."""
-    _make_skill(
-        skills_root,
-        "review-shared",
-        extra_files={"checklist.md": "content"},
-    )
-    return _make_skill(
-        skills_root,
-        "my-skill",
-        _skill_with_dep_content(),
-    )
-
-
-@pytest.fixture()
-def two_skills_shared_dep(skills_root: Path) -> tuple[Path, Path]:
-    """Two skills (skill-a, skill-b) that both depend on review-shared."""
-    _make_skill(
-        skills_root,
-        "review-shared",
-        extra_files={"checklist.md": "content"},
-    )
-    a = _make_skill(
-        skills_root,
-        "skill-a",
-        _skill_with_dep_content(name="skill-a", description="Skill A."),
-    )
-    b = _make_skill(
-        skills_root,
-        "skill-b",
-        _skill_with_dep_content(name="skill-b", description="Skill B."),
-    )
-    return a, b
+    return calls, fake_run
 
 
 # ---------------------------------------------------------------------------
-# detect_dependencies
+# _validate_skill_name
 # ---------------------------------------------------------------------------
 
 
-class TestDetectDependencies:
-    def test_parses_sibling_references(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            name: my-skill
-            description: A skill.
-            ---
+class TestValidateSkillName:
+    @pytest.mark.parametrize(
+        "bad_name",
+        ["../escape", "a/b", ".", "..", "UPPER", "has space", "under_score", "a\\b"],
+    )
+    def test_rejects_invalid_names(self, bad_name: str) -> None:
+        with pytest.raises(SystemExit):
+            _validate_skill_name(bad_name)
 
-            1. Read `../review-shared/general-review-requirements.md`.
-            2. Read `../review-shared/go-review-checklist.md`.
-            3. Apply checks from `../other-dep/checks.md`.
-        """)
-        skill_dir = _make_skill(skills_root, "my-skill", content)
-        deps = detect_dependencies(skill_dir)
-        assert deps == {"review-shared", "other-dep"}
-
-    def test_deduplicates_references(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            name: my-skill
-            description: A skill.
-            ---
-
-            1. Read `../review-shared/file-a.md`.
-            2. Read `../review-shared/file-b.md`.
-            3. Read `../review-shared/file-c.md`.
-        """)
-        skill_dir = _make_skill(skills_root, "my-skill", content)
-        deps = detect_dependencies(skill_dir)
-        assert deps == {"review-shared"}
-
-    def test_ignores_local_file_references(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            name: my-skill
-            description: A skill.
-            ---
-
-            1. Apply checks from `kfp-review-checklist.md`.
-            2. Read `../review-shared/general.md`.
-        """)
-        skill_dir = _make_skill(skills_root, "my-skill", content)
-        deps = detect_dependencies(skill_dir)
-        assert deps == {"review-shared"}
-
-    def test_no_skill_md_returns_empty(self, skills_root: Path) -> None:
-        skill_dir = _make_skill(skills_root, "bare-skill")
-        deps = detect_dependencies(skill_dir)
-        assert deps == set()
+    @pytest.mark.parametrize("good_name", ["go-code-review", "a", "skill-1", "a1b"])
+    def test_accepts_valid_names(self, good_name: str) -> None:
+        _validate_skill_name(good_name)
 
 
 # ---------------------------------------------------------------------------
-# validate_skill
+# _load_artifact / _read_artifact_version / _read_artifact_name / _read_dependencies
 # ---------------------------------------------------------------------------
 
 
-class TestValidateSkill:
-    def test_valid_skill(self, skills_root: Path) -> None:
-        _make_skill(
-            skills_root,
-            "review-shared",
-            extra_files={"general.md": "content"},
-        )
-        _make_skill(
+class TestArtifactReading:
+    def test_read_version(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "my-skill", version="2.3.0")
+        assert _read_artifact_version(skills_root / "my-skill") == "2.3.0"
+
+    def test_read_name(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "my-skill")
+        assert _read_artifact_name(skills_root / "my-skill") == "my-skill"
+
+    def test_read_dependencies_present(self, skills_root: Path) -> None:
+        _make_artifact(
             skills_root,
             "my-skill",
-            _skill_with_dep_content(dep_file="general.md"),
+            dependencies=[{"name": "dep-a", "version": "1.0.0"}],
         )
-        errors = validate_skill(skills_root / "my-skill", skills_root)
-        assert errors == []
+        deps = _read_dependencies(skills_root / "my-skill")
+        assert deps == [{"name": "dep-a", "version": "1.0.0"}]
 
-    def test_missing_skill_md(self, skills_root: Path) -> None:
-        _make_skill(skills_root, "no-md")
-        errors = validate_skill(skills_root / "no-md", skills_root)
-        assert any("SKILL.md" in e for e in errors)
+    def test_read_dependencies_absent(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "my-skill")
+        deps = _read_dependencies(skills_root / "my-skill")
+        assert deps == []
 
-    def test_missing_name_in_frontmatter(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            description: A skill.
-            ---
+    def test_read_version_missing_file(self, tmp_path: Path) -> None:
+        with pytest.raises(SystemExit):
+            _read_artifact_version(tmp_path / "nonexistent")
 
-            # No name
-        """)
-        _make_skill(skills_root, "no-name", content)
-        errors = validate_skill(skills_root / "no-name", skills_root)
-        assert any("name" in e.lower() for e in errors)
+    def test_read_name_missing_file(self, tmp_path: Path) -> None:
+        with pytest.raises(SystemExit):
+            _read_artifact_name(tmp_path / "nonexistent")
 
-    def test_missing_description_in_frontmatter(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            name: my-skill
-            ---
+    def test_read_dependencies_missing_file(self, tmp_path: Path) -> None:
+        with pytest.raises(SystemExit):
+            _read_dependencies(tmp_path / "nonexistent")
 
-            # No description
-        """)
-        _make_skill(skills_root, "no-desc", content)
-        errors = validate_skill(skills_root / "no-desc", skills_root)
-        assert any("description" in e.lower() for e in errors)
+    def test_load_artifact_malformed_json(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "bad", raw_json="{invalid json")
+        with pytest.raises(SystemExit):
+            _load_artifact(skills_root / "bad")
 
-    def test_empty_name_in_frontmatter(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            name:
-            description: A skill.
-            ---
+    def test_read_version_missing_metadata_key(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "bad", raw_json='{"kind": "Skill"}')
+        with pytest.raises(SystemExit):
+            _read_artifact_version(skills_root / "bad")
 
-            # Empty name
-        """)
-        _make_skill(skills_root, "empty-name", content)
-        errors = validate_skill(skills_root / "empty-name", skills_root)
-        assert any("name" in e.lower() for e in errors)
+    def test_read_name_missing_metadata_key(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "bad", raw_json='{"kind": "Skill"}')
+        with pytest.raises(SystemExit):
+            _read_artifact_name(skills_root / "bad")
 
-    def test_empty_description_in_frontmatter(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            name: my-skill
-            description:
-            ---
+    def test_read_dependencies_invalid_type(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "bad",
+            raw_json='{"metadata": {"name": "bad", "version": "1.0.0"}, "dependencies": "not-a-list"}',
+        )
+        with pytest.raises(SystemExit):
+            _read_dependencies(skills_root / "bad")
 
-            # Empty description
-        """)
-        _make_skill(skills_root, "empty-desc", content)
-        errors = validate_skill(skills_root / "empty-desc", skills_root)
-        assert any("description" in e.lower() for e in errors)
+    def test_read_dependencies_missing_name_key(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "bad",
+            raw_json='{"metadata": {"name": "bad", "version": "1.0.0"}, "dependencies": [{"version": "1.0.0"}]}',
+        )
+        with pytest.raises(SystemExit):
+            _read_dependencies(skills_root / "bad")
 
-    def test_invalid_yaml_frontmatter(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            name: [unclosed
-            ---
+    def test_read_dependencies_non_dict_element(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "bad",
+            raw_json='{"metadata": {"name": "bad", "version": "1.0.0"}, "dependencies": ["not-a-dict"]}',
+        )
+        with pytest.raises(SystemExit):
+            _read_dependencies(skills_root / "bad")
 
-            # Bad YAML
-        """)
-        _make_skill(skills_root, "bad-yaml", content)
-        errors = validate_skill(skills_root / "bad-yaml", skills_root)
-        assert any("invalid yaml" in e.lower() for e in errors)
-        assert not any("missing 'name'" in e for e in errors)
 
-    def test_returns_all_errors_at_once(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            description: A skill.
-            ---
+# ---------------------------------------------------------------------------
+# _available_skills
+# ---------------------------------------------------------------------------
 
-            1. Read `../nonexistent-dep/file.md`.
-        """)
-        _make_skill(skills_root, "multi-err", content)
-        errors = validate_skill(skills_root / "multi-err", skills_root)
-        assert any("name" in e.lower() for e in errors)
-        assert any("nonexistent-dep" in e for e in errors)
-        assert len(errors) >= 2
 
-    def test_crlf_frontmatter(self, skills_root: Path) -> None:
-        content = "---\r\nname: crlf-skill\r\ndescription: A CRLF skill.\r\n---\r\n\r\n# crlf-skill\r\n"
-        _make_skill(skills_root, "crlf-skill", content)
-        errors = validate_skill(skills_root / "crlf-skill", skills_root)
-        assert errors == []
+class TestAvailableSkills:
+    def test_lists_skills_with_artifact_json(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "skill-a")
+        _make_artifact(skills_root, "skill-b")
+        (skills_root / "not-a-skill").mkdir(parents=True)
+        assert _available_skills(skills_root) == ["skill-a", "skill-b"]
 
-    def test_leading_blank_lines_before_frontmatter(self, skills_root: Path) -> None:
-        content = "\n\n---\nname: blank-lead\ndescription: Leading blanks.\n---\n\n# blank-lead\n"
-        _make_skill(skills_root, "blank-lead", content)
-        errors = validate_skill(skills_root / "blank-lead", skills_root)
-        assert errors == []
+    def test_empty_when_no_dir(self, tmp_path: Path) -> None:
+        assert _available_skills(tmp_path / "nonexistent") == []
 
-    def test_missing_dep_directory(self, skills_root: Path) -> None:
-        _make_skill(
+
+# ---------------------------------------------------------------------------
+# _resolve_all_deps
+# ---------------------------------------------------------------------------
+
+
+class TestResolveAllDeps:
+    def test_no_deps(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "standalone")
+        assert _resolve_all_deps("standalone", skills_root) == ["standalone"]
+
+    def test_single_dep(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "base")
+        _make_artifact(
+            skills_root,
+            "child",
+            dependencies=[{"name": "base", "version": "1.0.0"}],
+        )
+        result = _resolve_all_deps("child", skills_root)
+        assert result == ["base", "child"]
+
+    def test_transitive_deps(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "review-shared")
+        _make_artifact(
+            skills_root,
+            "go-code-review",
+            dependencies=[{"name": "review-shared", "version": "1.0.0"}],
+        )
+        _make_artifact(
+            skills_root,
+            "python-code-review",
+            dependencies=[{"name": "review-shared", "version": "1.0.0"}],
+        )
+        _make_artifact(
+            skills_root,
+            "kfp-review",
+            dependencies=[
+                {"name": "go-code-review", "version": "1.0.0"},
+                {"name": "python-code-review", "version": "1.0.0"},
+            ],
+        )
+        result = _resolve_all_deps("kfp-review", skills_root)
+        assert result.index("review-shared") < result.index("go-code-review")
+        assert result.index("review-shared") < result.index("python-code-review")
+        assert result.index("go-code-review") < result.index("kfp-review")
+        assert result.index("python-code-review") < result.index("kfp-review")
+        assert len(result) == 4
+
+    def test_deduplicates_shared_dep(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "shared")
+        _make_artifact(
+            skills_root,
+            "a",
+            dependencies=[{"name": "shared", "version": "1.0.0"}],
+        )
+        _make_artifact(
+            skills_root,
+            "b",
+            dependencies=[{"name": "shared", "version": "1.0.0"}],
+        )
+        _make_artifact(
+            skills_root,
+            "root",
+            dependencies=[
+                {"name": "a", "version": "1.0.0"},
+                {"name": "b", "version": "1.0.0"},
+            ],
+        )
+        result = _resolve_all_deps("root", skills_root)
+        assert result.count("shared") == 1
+
+    def test_cycle_detected(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "a",
+            dependencies=[{"name": "b", "version": "1.0.0"}],
+        )
+        _make_artifact(
+            skills_root,
+            "b",
+            dependencies=[{"name": "a", "version": "1.0.0"}],
+        )
+        with pytest.raises(SystemExit):
+            _resolve_all_deps("a", skills_root)
+
+    def test_self_cycle_detected(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "self-ref",
+            dependencies=[{"name": "self-ref", "version": "1.0.0"}],
+        )
+        with pytest.raises(SystemExit):
+            _resolve_all_deps("self-ref", skills_root)
+
+    def test_version_mismatch_exits(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "dep", version="2.0.0")
+        _make_artifact(
+            skills_root,
+            "root",
+            dependencies=[{"name": "dep", "version": "1.0.0"}],
+        )
+        with pytest.raises(SystemExit):
+            _resolve_all_deps("root", skills_root)
+
+    def test_invalid_dep_name_exits(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "root",
+            raw_json=json.dumps(
+                {
+                    "metadata": {"name": "root", "version": "1.0.0"},
+                    "dependencies": [{"name": "../escape", "version": "1.0.0"}],
+                }
+            ),
+        )
+        with pytest.raises(SystemExit):
+            _resolve_all_deps("root", skills_root)
+
+
+# ---------------------------------------------------------------------------
+# _run
+# ---------------------------------------------------------------------------
+
+
+class TestRun:
+    def test_success(self) -> None:
+        result = _run(["echo", "hello"])
+        assert result.returncode == 0
+        assert "hello" in result.stdout
+
+    def test_failure_exits(self) -> None:
+        with pytest.raises(SystemExit):
+            _run(["false"])
+
+
+# ---------------------------------------------------------------------------
+# pack_and_push
+# ---------------------------------------------------------------------------
+
+
+class TestPackAndPush:
+    def test_calls_validate_pack_push(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+        monkeypatch.setattr("install._run", fake_run)
+
+        pack_and_push(
+            "my-skill",
+            skills_root,
+            "localhost:5050/skills",
+            striatum="/usr/bin/striatum",
+        )
+
+        assert len(calls) == 3
+        assert calls[0][1] == "validate"
+        assert calls[1][1] == "pack"
+        assert calls[2][1] == "push"
+        assert "localhost:5050/skills/my-skill:1.0.0" in calls[2]
+
+    def test_missing_skill_exits(self, skills_root: Path) -> None:
+        skills_root.mkdir(parents=True, exist_ok=True)
+        with pytest.raises(SystemExit):
+            pack_and_push(
+                "nonexistent",
+                skills_root,
+                "localhost:5050/skills",
+                striatum="/usr/bin/striatum",
+            )
+
+    def test_cleans_stale_layout(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        skill_dir = _make_artifact(skills_root, "my-skill")
+        layout = skill_dir / ".striatum"
+        layout.mkdir()
+        (layout / "stale").write_text("old", encoding="utf-8")
+
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+        monkeypatch.setattr(
+            "install._run",
+            lambda *a, **kw: subprocess.CompletedProcess([], 0, "", ""),
+        )
+
+        pack_and_push(
+            "my-skill",
+            skills_root,
+            "localhost:5050/skills",
+            striatum="/usr/bin/striatum",
+        )
+        assert not (layout / "stale").exists()
+
+    def test_cleans_non_directory_layout(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        skill_dir = _make_artifact(skills_root, "my-skill")
+        layout = skill_dir / ".striatum"
+        layout.write_text("I am a file", encoding="utf-8")
+
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+        monkeypatch.setattr(
+            "install._run",
+            lambda *a, **kw: subprocess.CompletedProcess([], 0, "", ""),
+        )
+
+        pack_and_push(
+            "my-skill",
+            skills_root,
+            "localhost:5050/skills",
+            striatum="/usr/bin/striatum",
+        )
+        assert not layout.exists()
+
+    def test_name_mismatch_exits(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(
             skills_root,
             "my-skill",
-            _skill_with_dep_content(dep="nonexistent-dep", dep_file="file.md"),
+            raw_json=json.dumps(
+                {
+                    "metadata": {"name": "different-name", "version": "1.0.0"},
+                    "spec": {"entrypoint": "SKILL.md", "files": ["SKILL.md"]},
+                }
+            ),
         )
-        errors = validate_skill(skills_root / "my-skill", skills_root)
-        assert any("nonexistent-dep" in e for e in errors)
-
-    def test_missing_dep_file(self, skills_root: Path) -> None:
-        _make_skill(skills_root, "review-shared")
-        _make_skill(
-            skills_root,
-            "my-skill",
-            _skill_with_dep_content(dep_file="missing-file.md"),
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+        monkeypatch.setattr(
+            "install._run",
+            lambda *a, **kw: subprocess.CompletedProcess([], 0, "", ""),
         )
-        errors = validate_skill(skills_root / "my-skill", skills_root)
-        assert any("missing-file.md" in e for e in errors)
 
-    def test_invalid_dep_name_flagged(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            name: my-skill
-            description: A skill.
-            ---
+        with pytest.raises(SystemExit):
+            pack_and_push(
+                "my-skill",
+                skills_root,
+                "localhost:5050/skills",
+                striatum="/usr/bin/striatum",
+            )
 
-            1. Read `../../escape/file.md`.
-        """)
-        _make_skill(skills_root, "my-skill", content)
-        errors = validate_skill(skills_root / "my-skill", skills_root)
-        assert any("invalid dependency" in e.lower() for e in errors)
-
-    def test_file_ref_path_traversal_flagged(self, skills_root: Path) -> None:
-        content = dedent("""\
-            ---
-            name: my-skill
-            description: A skill.
-            ---
-
-            1. Read `../review-shared/../../etc/passwd`.
-        """)
-        _make_skill(skills_root, "review-shared", extra_files={"checklist.md": "ok"})
-        _make_skill(skills_root, "my-skill", content)
-        errors = validate_skill(skills_root / "my-skill", skills_root)
-        assert any("escapes" in e.lower() or "outside" in e.lower() for e in errors)
+    def test_rejects_invalid_skill_name(self, skills_root: Path) -> None:
+        with pytest.raises(SystemExit):
+            pack_and_push(
+                "../escape",
+                skills_root,
+                "localhost:5050/skills",
+                striatum="/usr/bin/striatum",
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -345,184 +463,84 @@ class TestValidateSkill:
 
 
 class TestInstallSkill:
-    def test_creates_symlinks_for_skill_and_deps(
-        self, skills_root: Path, target_dir: Path, skill_with_dep: Path
+    def test_packs_deps_then_installs(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        install_skill("my-skill", target_dir, skills_root)
-
-        skill_link = target_dir / "my-skill"
-        dep_link = target_dir / "review-shared"
-        assert skill_link.is_symlink()
-        assert dep_link.is_symlink()
-        assert skill_link.resolve() == (skills_root / "my-skill").resolve()
-        assert dep_link.resolve() == (skills_root / "review-shared").resolve()
-
-    def test_creates_target_dir_if_missing(
-        self, skills_root: Path, target_dir: Path
-    ) -> None:
-        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
-        assert not target_dir.exists()
-
-        install_skill("simple", target_dir, skills_root)
-
-        assert target_dir.is_dir()
-        assert (target_dir / "simple").is_symlink()
-
-    def test_no_dependencies(self, skills_root: Path, target_dir: Path) -> None:
-        _make_skill(skills_root, "standalone", _valid_frontmatter("standalone"))
-
-        install_skill("standalone", target_dir, skills_root)
-
-        assert (target_dir / "standalone").is_symlink()
-        symlinks = [p for p in target_dir.iterdir() if p.is_symlink()]
-        assert len(symlinks) == 1
-
-    def test_idempotent(
-        self, skills_root: Path, target_dir: Path, skill_with_dep: Path
-    ) -> None:
-        install_skill("my-skill", target_dir, skills_root)
-        install_skill("my-skill", target_dir, skills_root)
-
-        assert (target_dir / "my-skill").is_symlink()
-        assert (target_dir / "review-shared").is_symlink()
-
-    def test_second_skill_shared_dep(
-        self,
-        skills_root: Path,
-        target_dir: Path,
-        two_skills_shared_dep: tuple[Path, Path],
-    ) -> None:
-        install_skill("skill-a", target_dir, skills_root)
-        install_skill("skill-b", target_dir, skills_root)
-
-        assert (target_dir / "skill-a").is_symlink()
-        assert (target_dir / "skill-b").is_symlink()
-        assert (target_dir / "review-shared").is_symlink()
-
-    def test_conflict_real_dir_warns_and_skips(
-        self, skills_root: Path, target_dir: Path
-    ) -> None:
-        _make_skill(skills_root, "my-skill", _valid_frontmatter("my-skill"))
-        target_dir.mkdir(parents=True)
-        (target_dir / "my-skill").mkdir()
-        (target_dir / "my-skill" / "existing-file.txt").write_text(
-            "keep me", encoding="utf-8"
+        _make_artifact(skills_root, "review-shared")
+        _make_artifact(
+            skills_root,
+            "go-review",
+            dependencies=[{"name": "review-shared", "version": "1.0.0"}],
         )
 
-        install_skill("my-skill", target_dir, skills_root)
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
-        assert not (target_dir / "my-skill").is_symlink()
-        assert (target_dir / "my-skill" / "existing-file.txt").read_text(
-            encoding="utf-8"
-        ) == "keep me"
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
 
-    def test_conflict_real_dir_not_overwritten_with_force(
-        self, skills_root: Path, target_dir: Path
+        install_skill("go-review")
+
+        push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
+        assert len(push_calls) == 2
+        assert "review-shared" in push_calls[0][-1]
+        assert "go-review" in push_calls[1][-1]
+
+        install_calls = [c for c in calls if len(c) > 2 and c[2] == "install"]
+        assert len(install_calls) == 1
+        assert "--target" in install_calls[0]
+        assert "cursor" in install_calls[0]
+
+    def test_project_flag_passed(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _make_skill(skills_root, "my-skill", _valid_frontmatter("my-skill"))
-        target_dir.mkdir(parents=True)
-        (target_dir / "my-skill").mkdir()
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
-        install_skill("my-skill", target_dir, skills_root, force=True)
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
 
-        assert not (target_dir / "my-skill").is_symlink()
+        install_skill("my-skill", project="/tmp/my-project")
 
-    def test_conflict_real_file_warns_and_skips(
-        self,
-        skills_root: Path,
-        target_dir: Path,
-        capsys: pytest.CaptureFixture[str],
+        install_calls = [c for c in calls if len(c) > 2 and c[2] == "install"]
+        assert "--project" in install_calls[0]
+        assert "/tmp/my-project" in install_calls[0]
+
+    def test_force_flag_passed(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _make_skill(skills_root, "my-skill", _valid_frontmatter("my-skill"))
-        target_dir.mkdir(parents=True)
-        (target_dir / "my-skill").write_text("I am a file", encoding="utf-8")
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
-        install_skill("my-skill", target_dir, skills_root)
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
 
-        assert not (target_dir / "my-skill").is_symlink()
-        assert (target_dir / "my-skill").read_text(encoding="utf-8") == "I am a file"
-        captured = capsys.readouterr()
-        assert "existing file" in captured.err
+        install_skill("my-skill", force=True)
 
-    def test_conflict_symlink_warns_and_skips(
-        self, skills_root: Path, target_dir: Path
+        install_calls = [c for c in calls if len(c) > 2 and c[2] == "install"]
+        assert "--force" in install_calls[0]
+
+    def test_missing_registry_exits(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        _make_skill(skills_root, "my-skill", _valid_frontmatter("my-skill"))
-        target_dir.mkdir(parents=True)
-        other = target_dir.parent / "other"
-        other.mkdir()
-        (target_dir / "my-skill").symlink_to(other)
-
-        install_skill("my-skill", target_dir, skills_root)
-
-        assert (target_dir / "my-skill").resolve() == other.resolve()
-
-    def test_force_replaces_conflicting_symlink(
-        self, skills_root: Path, target_dir: Path
-    ) -> None:
-        _make_skill(skills_root, "my-skill", _valid_frontmatter("my-skill"))
-        target_dir.mkdir(parents=True)
-        other = target_dir.parent / "other"
-        other.mkdir()
-        (target_dir / "my-skill").symlink_to(other)
-
-        install_skill("my-skill", target_dir, skills_root, force=True)
-
-        assert (target_dir / "my-skill").is_symlink()
-        assert (target_dir / "my-skill").resolve() == (
-            skills_root / "my-skill"
-        ).resolve()
-
-    def test_conflict_does_not_install_deps(
-        self, skills_root: Path, target_dir: Path, skill_with_dep: Path
-    ) -> None:
-        target_dir.mkdir(parents=True)
-        (target_dir / "my-skill").mkdir()
-
-        install_skill("my-skill", target_dir, skills_root)
-
-        assert not (target_dir / "my-skill").is_symlink()
-        assert not (target_dir / "review-shared").exists()
-
-    def test_validate_blocks_install(self, skills_root: Path, target_dir: Path) -> None:
-        _make_skill(skills_root, "bad-skill")
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.delenv("STRIATUM_REGISTRY", raising=False)
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         with pytest.raises(SystemExit):
-            install_skill("bad-skill", target_dir, skills_root)
+            install_skill("my-skill")
 
-        if target_dir.exists():
-            symlinks = [p for p in target_dir.iterdir() if p.is_symlink()]
-            assert symlinks == []
-
-    def test_missing_skill_lists_available(
-        self, skills_root: Path, target_dir: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        _make_skill(skills_root, "real-skill", _valid_frontmatter("real-skill"))
-
+    def test_rejects_invalid_skill_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
         with pytest.raises(SystemExit):
-            install_skill("nonexistent", target_dir, skills_root)
-
-        captured = capsys.readouterr()
-        assert "real-skill" in captured.err
-
-    @pytest.mark.parametrize(
-        "bad_name",
-        ["../escape", "a/b", ".", "..", "UPPER", "has space", "under_score"],
-    )
-    def test_install_rejects_invalid_skill_name(
-        self,
-        skills_root: Path,
-        target_dir: Path,
-        bad_name: str,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        with pytest.raises(SystemExit):
-            install_skill(bad_name, target_dir, skills_root)
-
-        assert "invalid skill name" in capsys.readouterr().err
-
-        if target_dir.exists():
-            assert list(target_dir.iterdir()) == []
+            install_skill("../escape")
 
 
 # ---------------------------------------------------------------------------
@@ -531,134 +549,63 @@ class TestInstallSkill:
 
 
 class TestUninstallSkill:
-    def test_removes_skill_symlink(self, skills_root: Path, target_dir: Path) -> None:
-        _make_skill(skills_root, "my-skill", _valid_frontmatter("my-skill"))
-        install_skill("my-skill", target_dir, skills_root)
-        assert (target_dir / "my-skill").is_symlink()
+    def test_calls_striatum_uninstall(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
-        removed = uninstall_skill("my-skill", target_dir, skills_root)
-        assert removed is True
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
 
-        assert not (target_dir / "my-skill").exists()
+        uninstall_skill("my-skill")
 
-    def test_not_installed_warns_gracefully(
-        self, skills_root: Path, target_dir: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        _make_skill(skills_root, "my-skill", _valid_frontmatter("my-skill"))
-        target_dir.mkdir(parents=True)
+        assert len(calls) == 1
+        assert "uninstall" in calls[0]
+        assert "my-skill" in calls[0]
 
-        removed = uninstall_skill("my-skill", target_dir, skills_root)
-        assert removed is False
+    def test_project_flag_passed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
-        captured = capsys.readouterr()
-        assert "not installed" in captured.err.lower()
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
 
-    def test_target_dir_missing(
-        self, skills_root: Path, target_dir: Path, capsys: pytest.CaptureFixture[str]
-    ) -> None:
-        assert not target_dir.exists()
+        uninstall_skill("my-skill", project="/tmp/proj")
 
-        removed = uninstall_skill("my-skill", target_dir, skills_root)
-        assert removed is False
+        assert "--project" in calls[0]
+        assert "/tmp/proj" in calls[0]
 
-        captured = capsys.readouterr()
-        assert "not installed" in captured.err.lower()
-
-    def test_does_not_remove_symlink_pointing_elsewhere(
-        self, skills_root: Path, target_dir: Path
-    ) -> None:
-        target_dir.mkdir(parents=True)
-        other = target_dir.parent / "other"
-        other.mkdir()
-        (target_dir / "my-skill").symlink_to(other)
-
-        removed = uninstall_skill("my-skill", target_dir, skills_root)
-        assert removed is False
-
-        assert (target_dir / "my-skill").is_symlink()
-        assert (target_dir / "my-skill").resolve() == other.resolve()
-
-    def test_shared_dep_kept_when_other_skill_needs_it(
-        self,
-        skills_root: Path,
-        target_dir: Path,
-        two_skills_shared_dep: tuple[Path, Path],
-    ) -> None:
-        install_skill("skill-a", target_dir, skills_root)
-        install_skill("skill-b", target_dir, skills_root)
-
-        removed = uninstall_skill("skill-a", target_dir, skills_root)
-        assert removed is True
-
-        assert not (target_dir / "skill-a").exists()
-        assert (target_dir / "skill-b").is_symlink()
-        assert (target_dir / "review-shared").is_symlink()
-
-    def test_shared_dep_removed_when_no_other_skill_needs_it(
-        self, skills_root: Path, target_dir: Path, skill_with_dep: Path
-    ) -> None:
-        install_skill("my-skill", target_dir, skills_root)
-        removed = uninstall_skill("my-skill", target_dir, skills_root)
-        assert removed is True
-
-        assert not (target_dir / "my-skill").exists()
-        assert not (target_dir / "review-shared").exists()
-
-    def test_cleans_deps_when_source_dir_deleted(
-        self, skills_root: Path, target_dir: Path, skill_with_dep: Path
-    ) -> None:
-        install_skill("my-skill", target_dir, skills_root)
-        assert (target_dir / "review-shared").is_symlink()
-
-        shutil.rmtree(skills_root / "my-skill")
-
-        removed = uninstall_skill("my-skill", target_dir, skills_root)
-        assert removed is True
-
-        assert not (target_dir / "my-skill").exists()
-        assert not (target_dir / "review-shared").exists()
-
-    @pytest.mark.parametrize(
-        "bad_name",
-        ["../escape", "a/b", ".", "..", "UPPER", "has space", "under_score"],
-    )
-    def test_uninstall_rejects_invalid_skill_name(
-        self,
-        skills_root: Path,
-        target_dir: Path,
-        bad_name: str,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
+    def test_rejects_invalid_skill_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
         with pytest.raises(SystemExit):
-            uninstall_skill(bad_name, target_dir, skills_root)
-
-        assert "invalid skill name" in capsys.readouterr().err
+            uninstall_skill("../escape")
 
 
 # ---------------------------------------------------------------------------
-# installed_skills
+# reinstall_all
 # ---------------------------------------------------------------------------
 
 
-class TestInstalledSkills:
-    def test_empty_target_dir(self, skills_root: Path, target_dir: Path) -> None:
-        target_dir.mkdir(parents=True)
-        result = installed_skills(target_dir, skills_root)
-        assert result == set()
+class TestReinstallAll:
+    def test_calls_striatum_reinstall(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
-    def test_missing_target_dir(self, skills_root: Path, target_dir: Path) -> None:
-        assert not target_dir.exists()
-        result = installed_skills(target_dir, skills_root)
-        assert result == set()
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
 
-    def test_returns_only_skills_not_deps(
-        self, skills_root: Path, target_dir: Path, skill_with_dep: Path
-    ) -> None:
-        install_skill("my-skill", target_dir, skills_root)
+        reinstall_all()
 
-        result = installed_skills(target_dir, skills_root)
+        assert len(calls) == 1
+        assert "--reinstall-all" in calls[0]
+        assert "--target" in calls[0]
+        assert "cursor" in calls[0]
 
-        assert result == {"my-skill"}
+    def test_force_flag_passed(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        reinstall_all(force=True)
+
+        assert "--force" in calls[0]
 
 
 # ---------------------------------------------------------------------------
@@ -681,10 +628,6 @@ def _run_cli(
     )
 
 
-def _db_path_for(home_dir: Path) -> Path:
-    return home_dir / ".ai-skills" / "installed-skills.yaml"
-
-
 class TestCli:
     def test_personal_and_project_mutually_exclusive(self) -> None:
         result = _run_cli("--personal", "--project", "/tmp/proj", "--skill", "my-skill")
@@ -698,18 +641,6 @@ class TestCli:
         result = _run_cli("--skill", "my-skill")
         assert result.returncode != 0
 
-    def test_reinstall_all_does_not_require_skill(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-        env = dict(os.environ)
-        env["HOME"] = str(fake_home)
-
-        result = _run_cli("--reinstall-all", env=env)
-        assert result.returncode == 0
-
     def test_reinstall_all_conflicts_with_skill_target_flags(self) -> None:
         result = _run_cli(
             "--reinstall-all", "--skill", "my-skill", "--project", "/tmp/proj"
@@ -721,609 +652,47 @@ class TestCli:
         assert result.returncode != 0
 
 
-class TestReinstallAllAndDb:
-    @staticmethod
-    def _setup_home(
-        tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> tuple[Path, Path]:
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        monkeypatch.setenv("HOME", str(fake_home))
-        return fake_home, _db_path_for(fake_home)
-
-    def _setup_conflicting_personal_reinstall_case(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> tuple[Path, Path, Path]:
-        fake_home, db_path = self._setup_home(tmp_path, monkeypatch)
-        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
-        target_dir = fake_home / ".cursor" / "skills"
-        target_dir.mkdir(parents=True)
-        other = tmp_path / "other-dir"
-        other.mkdir()
-        (target_dir / "simple").symlink_to(other)
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "skill": "simple",
-                        "target": "personal",
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    }
-                ]
-            },
-            db_path=db_path,
-        )
-        return target_dir, other, db_path
-
-    def test_install_tracks_personal_record(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        fake_home, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
-        target_dir = fake_home / ".cursor" / "skills"
-        install_skill("simple", target_dir, skills_root)
-        track_installed_entry("simple", personal=True, db_path=db_path)
-
-        db = load_installed_db(db_path=db_path)
-        assert db["entries"] == [
-            {
-                "skill": "simple",
-                "target": "personal",
-                "status": "ok",
-                "last_error": None,
-                "updated_at": db["entries"][0]["updated_at"],
-            }
-        ]
-
-    def test_install_tracks_project_record_with_path(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        project_dir = tmp_path / "my-project"
-        project_dir.mkdir()
-        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
-        target_dir = project_dir / ".cursor" / "skills"
-        install_skill("simple", target_dir, skills_root)
-        track_installed_entry("simple", project=project_dir, db_path=db_path)
-
-        db = load_installed_db(db_path=db_path)
-        assert db["entries"] == [
-            {
-                "skill": "simple",
-                "target": "project",
-                "project_path": str(project_dir.resolve()),
-                "status": "ok",
-                "last_error": None,
-                "updated_at": db["entries"][0]["updated_at"],
-            }
-        ]
-
-    def test_upsert_prevents_duplicate_records_for_same_key(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        fake_home, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
-        target_dir = fake_home / ".cursor" / "skills"
-        install_skill("simple", target_dir, skills_root)
-
-        track_installed_entry("simple", personal=True, db_path=db_path)
-        track_installed_entry("simple", personal=True, db_path=db_path)
-
-        db = load_installed_db(db_path=db_path)
-        assert len(db["entries"]) == 1
-
-    def test_uninstall_removes_matching_record_only(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        project_a = tmp_path / "a"
-        project_b = tmp_path / "b"
-        project_a.mkdir()
-        project_b.mkdir()
-        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
-
-        track_installed_entry("simple", project=project_a, db_path=db_path)
-        track_installed_entry("simple", project=project_b, db_path=db_path)
-
-        removed = remove_installed_entry("simple", project=project_a, db_path=db_path)
-        assert removed is True
-
-        db = load_installed_db(db_path=db_path)
-        assert db["entries"] == [
-            {
-                "skill": "simple",
-                "target": "project",
-                "project_path": str(project_b.resolve()),
-                "status": "ok",
-                "last_error": None,
-                "updated_at": db["entries"][0]["updated_at"],
-            }
-        ]
-
-    def test_uninstall_removes_entry_even_if_errored(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "skill": "bad-skill",
-                        "target": "personal",
-                        "status": "error",
-                        "last_error": "boom",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    }
-                ]
-            },
-            db_path=db_path,
-        )
-        removed = remove_installed_entry("bad-skill", personal=True, db_path=db_path)
-        assert removed is True
-        db = load_installed_db(db_path=db_path)
-        assert db["entries"] == []
-
-    def test_uninstall_noop_should_not_remove_db_record(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        fake_home, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
-        track_installed_entry("simple", personal=True, db_path=db_path)
-
-        target_dir = fake_home / ".cursor" / "skills"
-        removed = uninstall_skill("simple", target_dir, skills_root)
-        assert removed is False
-
-        db = load_installed_db(db_path=db_path)
-        assert len(db["entries"]) == 1
-        assert db["entries"][0]["skill"] == "simple"
-
-    def test_reinstall_all_missing_db_is_noop(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        self._setup_home(tmp_path, monkeypatch)
-
-        report = reinstall_all(skills_root=skills_root)
-        assert report.total == 0
-        assert report.succeeded == 0
-        assert report.failed == 0
-
-    def test_reinstall_all_empty_entries_is_noop(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        save_installed_db({"entries": []}, db_path=db_path)
-        report = reinstall_all(skills_root=skills_root, db_path=db_path)
-        assert report.total == 0
-        assert report.succeeded == 0
-        assert report.failed == 0
-
-    def test_reinstall_all_replays_personal_and_project_entries(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        fake_home, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        project_dir = tmp_path / "project"
-        project_dir.mkdir()
-        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
-
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "skill": "simple",
-                        "target": "personal",
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    },
-                    {
-                        "skill": "simple",
-                        "target": "project",
-                        "project_path": str(project_dir),
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:01+00:00",
-                    },
-                ]
-            },
-            db_path=db_path,
-        )
-
-        report = reinstall_all(skills_root=skills_root, db_path=db_path)
-        assert report.total == 2
-        assert report.succeeded == 2
-        assert report.failed == 0
-        assert (fake_home / ".cursor" / "skills" / "simple").is_symlink()
-        assert (project_dir / ".cursor" / "skills" / "simple").is_symlink()
-
-    def test_reinstall_all_continues_on_failure_and_marks_error(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        _make_skill(skills_root, "good-skill", _valid_frontmatter("good-skill"))
-
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "skill": "missing-skill",
-                        "target": "personal",
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    },
-                    {
-                        "skill": "good-skill",
-                        "target": "personal",
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:01+00:00",
-                    },
-                ]
-            },
-            db_path=db_path,
-        )
-
-        report = reinstall_all(skills_root=skills_root, db_path=db_path)
-        assert report.total == 2
-        assert report.succeeded == 1
-        assert report.failed == 1
-
-        db = load_installed_db(db_path=db_path)
-        bad = next(e for e in db["entries"] if e["skill"] == "missing-skill")
-        good = next(e for e in db["entries"] if e["skill"] == "good-skill")
-        assert bad["status"] == "error"
-        assert isinstance(bad.get("last_error"), str)
-        assert bad["last_error"]
-        assert good["status"] == "ok"
-        assert good.get("last_error") in (None, "")
-
-    def test_reinstall_all_prints_final_report(
-        self,
-        skills_root: Path,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "skill": "missing-skill",
-                        "target": "personal",
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    }
-                ]
-            },
-            db_path=db_path,
-        )
-        reinstall_all(skills_root=skills_root, db_path=db_path)
-        err = capsys.readouterr().err
-        assert "reinstall-all report" in err.lower()
-        assert "total: 1" in err.lower()
-        assert "failed: 1" in err.lower()
-        assert "missing-skill" in err
-
-    def test_reinstall_all_marks_missing_skill_field_as_error(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "target": "personal",
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    }
-                ]
-            },
-            db_path=db_path,
-        )
-        report = reinstall_all(skills_root=skills_root, db_path=db_path)
-        assert report.failed == 1
-        db = load_installed_db(db_path=db_path)
-        assert db["entries"][0]["status"] == "error"
-
-    def test_reinstall_all_marks_project_missing_path_as_error(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "skill": "simple",
-                        "target": "project",
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    }
-                ]
-            },
-            db_path=db_path,
-        )
-        report = reinstall_all(skills_root=skills_root, db_path=db_path)
-        assert report.failed == 1
-        db = load_installed_db(db_path=db_path)
-        assert db["entries"][0]["status"] == "error"
-
-    def test_reinstall_all_marks_unknown_target_as_error(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "skill": "simple",
-                        "target": "unknown",
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    }
-                ]
-            },
-            db_path=db_path,
-        )
-        report = reinstall_all(skills_root=skills_root, db_path=db_path)
-        assert report.failed == 1
-
-    def test_project_path_is_normalized_on_write(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        raw_project = tmp_path / "nested" / ".." / "project-dir"
-        (tmp_path / "project-dir").mkdir()
-
-        track_installed_entry("simple", project=raw_project, db_path=db_path)
-        db = load_installed_db(db_path=db_path)
-        assert db["entries"][0]["project_path"] == str(
-            (tmp_path / "project-dir").resolve()
-        )
-
-    def test_reinstall_all_uses_normalized_project_path(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
-        project_dir = tmp_path / "project-dir"
-        project_dir.mkdir()
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "skill": "simple",
-                        "target": "project",
-                        "project_path": str(project_dir / ".." / "project-dir"),
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    }
-                ]
-            },
-            db_path=db_path,
-        )
-
-        report = reinstall_all(skills_root=skills_root, db_path=db_path)
-        assert report.succeeded == 1
-        assert (project_dir / ".cursor" / "skills" / "simple").is_symlink()
-
-    def test_reinstall_all_without_force_keeps_conflicting_symlink(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        target_dir, other, db_path = self._setup_conflicting_personal_reinstall_case(
-            skills_root, tmp_path, monkeypatch
-        )
-
-        report = reinstall_all(skills_root=skills_root, db_path=db_path, force=False)
-        assert report.failed == 1
-        assert (target_dir / "simple").resolve() == other.resolve()
-
-    def test_reinstall_all_with_force_replaces_conflicting_symlink(
-        self, skills_root: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        target_dir, _, db_path = self._setup_conflicting_personal_reinstall_case(
-            skills_root, tmp_path, monkeypatch
-        )
-
-        report = reinstall_all(skills_root=skills_root, db_path=db_path, force=True)
-        assert report.succeeded == 1
-        assert (target_dir / "simple").resolve() == (skills_root / "simple").resolve()
-
-    def test_save_db_permission_error_surfaces_actionable_message(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        fake_home, _ = self._setup_home(tmp_path, monkeypatch)
-
-        blocked = fake_home / ".ai-skills"
-        blocked.write_text("not-a-directory", encoding="utf-8")
-
-        with pytest.raises(SystemExit):
-            save_installed_db({"entries": []})
-
-    def test_reinstall_all_reports_db_save_failure(
-        self,
-        skills_root: Path,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        _make_skill(skills_root, "simple", _valid_frontmatter("simple"))
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "skill": "simple",
-                        "target": "personal",
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    }
-                ]
-            },
-            db_path=db_path,
-        )
-
-        def _boom(*_: object, **__: object) -> None:
-            raise OSError("write failed")
-
-        monkeypatch.setattr("install.os.replace", _boom)
-        with pytest.raises(SystemExit):
-            reinstall_all(skills_root=skills_root, db_path=db_path)
-        assert "write failed" in capsys.readouterr().err
-
-    def test_save_db_replace_failure_preserves_existing_content(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-        save_installed_db(
-            {
-                "entries": [
-                    {
-                        "skill": "stable",
-                        "target": "personal",
-                        "status": "ok",
-                        "updated_at": "2026-01-01T00:00:00+00:00",
-                    }
-                ]
-            },
-            db_path=db_path,
-        )
-        before = db_path.read_text(encoding="utf-8")
-
-        def _boom(*_: object, **__: object) -> None:
-            raise OSError("replace failed")
-
-        monkeypatch.setattr("install.os.replace", _boom)
-        with pytest.raises(SystemExit):
-            save_installed_db(
-                {
-                    "entries": [
-                        {
-                            "skill": "changed",
-                            "target": "personal",
-                            "status": "ok",
-                            "updated_at": "2026-01-02T00:00:00+00:00",
-                        }
-                    ]
-                },
-                db_path=db_path,
-            )
-
-        assert db_path.read_text(encoding="utf-8") == before
-
-    def test_load_db_backfills_missing_status_and_updated_at(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-
-        save_installed_db(
-            {"entries": [{"skill": "simple", "target": "personal"}]}, db_path=db_path
-        )
-        db = load_installed_db(db_path=db_path)
-        entry = db["entries"][0]
-        assert entry["status"] == "ok"
-        assert entry["updated_at"]
-
-    def test_load_db_invalid_top_level_schema_fails(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        db_path.write_text("- invalid\n", encoding="utf-8")
-
-        with pytest.raises(SystemExit):
-            load_installed_db(db_path=db_path)
-
-    def test_load_db_invalid_entries_schema_fails(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        _, db_path = self._setup_home(tmp_path, monkeypatch)
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        db_path.write_text("entries: not-a-list\n", encoding="utf-8")
-
-        with pytest.raises(SystemExit):
-            load_installed_db(db_path=db_path)
-
-
 # ---------------------------------------------------------------------------
-# Integration / smoke test
+# Integration: real skills directory
 # ---------------------------------------------------------------------------
 
 
 class TestSmoke:
-    """End-to-end CLI round-trip against the real skills directory."""
+    """End-to-end round-trip against the real skills directory using striatum + registry."""
+
+    @pytest.fixture(autouse=True)
+    def _require_striatum_and_registry(self) -> None:
+        import shutil as _shutil
+
+        if _shutil.which("striatum") is None:
+            pytest.skip("striatum not on PATH")
+        reg = os.environ.get("STRIATUM_REGISTRY", "").strip()
+        if not reg:
+            pytest.skip("STRIATUM_REGISTRY not set")
 
     def test_install_and_uninstall_via_cli(self, tmp_path: Path) -> None:
         project_dir = tmp_path / "project"
         project_dir.mkdir()
         target_dir = project_dir / ".cursor" / "skills"
 
+        env = dict(os.environ)
+
         result = _run_cli(
-            "--skill", "python-code-review", "--project", str(project_dir)
+            "--skill", "go-code-review", "--project", str(project_dir), env=env
         )
         assert result.returncode == 0, result.stderr
 
-        assert (target_dir / "python-code-review").is_symlink()
-        assert (target_dir / "python-code-review" / "SKILL.md").is_file()
-        assert (target_dir / "review-shared").is_symlink()
-
-        result = _run_cli(
-            "--skill", "python-code-review", "--project", str(project_dir)
-        )
-        assert result.returncode == 0, result.stderr
-        assert "already installed" in result.stderr
+        assert (target_dir / "go-code-review").is_dir()
+        assert (target_dir / "go-code-review" / "SKILL.md").is_file()
+        assert (target_dir / "review-shared").is_dir()
 
         result = _run_cli(
             "--skill",
-            "python-code-review",
+            "go-code-review",
             "--project",
             str(project_dir),
             "--uninstall",
+            env=env,
         )
         assert result.returncode == 0, result.stderr
-
-        assert not (target_dir / "python-code-review").exists()
-        assert not (target_dir / "review-shared").exists()
-
-    def test_reinstall_all_via_cli(self, tmp_path: Path) -> None:
-        fake_home = tmp_path / "home"
-        fake_home.mkdir()
-        env = dict(os.environ)
-        env["HOME"] = str(fake_home)
-
-        project_dir = tmp_path / "project"
-        project_dir.mkdir()
-        target_dir = project_dir / ".cursor" / "skills"
-
-        result = _run_cli(
-            "--skill", "python-code-review", "--project", str(project_dir), env=env
-        )
-        assert result.returncode == 0, result.stderr
-        assert (target_dir / "python-code-review").is_symlink()
-        assert (target_dir / "review-shared").is_symlink()
-
-        (target_dir / "python-code-review").unlink()
-        (target_dir / "review-shared").unlink()
-        assert not (target_dir / "python-code-review").exists()
-        assert not (target_dir / "review-shared").exists()
-
-        result = _run_cli("--reinstall-all", env=env)
-        assert result.returncode == 0, result.stderr
-        assert "reinstall-all report" in result.stderr.lower()
-        assert "failed: 0" in result.stderr.lower()
-        assert (target_dir / "python-code-review").is_symlink()
-        assert (target_dir / "review-shared").is_symlink()
+        assert not (target_dir / "go-code-review").exists()
