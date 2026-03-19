@@ -37,6 +37,12 @@ would be consumed by the markdown parser instead of being reproduced in output.
 
 - \<question where intended behavior is unclear\>
 
+## Discussion Resolution Check
+
+- Prior comments/discussions reviewed: yes/no
+- Unresolved discussions: list or "none"
+- Resolved-but-questionable discussions: list or "none"
+
 ## Coverage Check
 
 - Go baseline checklist: complete/incomplete
