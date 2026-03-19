@@ -9,6 +9,12 @@ Apply these requirements to every review, regardless of language or component.
 - Flag assumptions and open questions when intended behavior is unclear.
 - Prefer actionable fixes over generic advice.
 
+## Mandatory Discussion Resolution Check
+
+- If prior review comments or design discussions exist, verify whether they were addressed in code.
+- Treat "resolved" status as a signal, not proof; confirm the concern is actually fixed.
+- Call out unresolved or weakly-resolved discussions explicitly.
+
 ## Mandatory Test Sufficiency Check
 
 - Explicitly answer: "Do tests cover enough scenarios?"
