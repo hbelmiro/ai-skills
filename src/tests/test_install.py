@@ -26,6 +26,9 @@ from install import (
     uninstall_skill,
 )
 
+# Synthetic artifacts in this module use the same dev version as skills on main.
+DEFAULT_SKILL_VERSION = "0.2.0-SNAPSHOT"
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -35,7 +38,7 @@ from install import (
 def _make_artifact(
     skills_root: Path,
     name: str,
-    version: str = "1.0.0",
+    version: str = DEFAULT_SKILL_VERSION,
     dependencies: list[dict[str, str]] | None = None,
     with_skill_md: bool = True,
     raw_json: str | None = None,
@@ -124,10 +127,10 @@ class TestArtifactReading:
         _make_artifact(
             skills_root,
             "my-skill",
-            dependencies=[{"name": "dep-a", "version": "1.0.0"}],
+            dependencies=[{"name": "dep-a", "version": DEFAULT_SKILL_VERSION}],
         )
         deps = _read_dependencies(skills_root / "my-skill")
-        assert deps == [{"name": "dep-a", "version": "1.0.0"}]
+        assert deps == [{"name": "dep-a", "version": DEFAULT_SKILL_VERSION}]
 
     def test_read_dependencies_absent(self, skills_root: Path) -> None:
         _make_artifact(skills_root, "my-skill")
@@ -165,7 +168,12 @@ class TestArtifactReading:
         _make_artifact(
             skills_root,
             "bad",
-            raw_json='{"metadata": {"name": "bad", "version": "1.0.0"}, "dependencies": "not-a-list"}',
+            raw_json=json.dumps(
+                {
+                    "metadata": {"name": "bad", "version": DEFAULT_SKILL_VERSION},
+                    "dependencies": "not-a-list",
+                }
+            ),
         )
         with pytest.raises(SystemExit):
             _read_dependencies(skills_root / "bad")
@@ -174,7 +182,12 @@ class TestArtifactReading:
         _make_artifact(
             skills_root,
             "bad",
-            raw_json='{"metadata": {"name": "bad", "version": "1.0.0"}, "dependencies": [{"version": "1.0.0"}]}',
+            raw_json=json.dumps(
+                {
+                    "metadata": {"name": "bad", "version": DEFAULT_SKILL_VERSION},
+                    "dependencies": [{"version": DEFAULT_SKILL_VERSION}],
+                }
+            ),
         )
         with pytest.raises(SystemExit):
             _read_dependencies(skills_root / "bad")
@@ -183,7 +196,12 @@ class TestArtifactReading:
         _make_artifact(
             skills_root,
             "bad",
-            raw_json='{"metadata": {"name": "bad", "version": "1.0.0"}, "dependencies": ["not-a-dict"]}',
+            raw_json=json.dumps(
+                {
+                    "metadata": {"name": "bad", "version": DEFAULT_SKILL_VERSION},
+                    "dependencies": ["not-a-dict"],
+                }
+            ),
         )
         with pytest.raises(SystemExit):
             _read_dependencies(skills_root / "bad")
@@ -220,7 +238,7 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "child",
-            dependencies=[{"name": "base", "version": "1.0.0"}],
+            dependencies=[{"name": "base", "version": DEFAULT_SKILL_VERSION}],
         )
         result = _resolve_all_deps("child", skills_root)
         assert result == ["base", "child"]
@@ -230,19 +248,19 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "go-code-review",
-            dependencies=[{"name": "review-shared", "version": "1.0.0"}],
+            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
         )
         _make_artifact(
             skills_root,
             "python-code-review",
-            dependencies=[{"name": "review-shared", "version": "1.0.0"}],
+            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
         )
         _make_artifact(
             skills_root,
             "kfp-review",
             dependencies=[
-                {"name": "go-code-review", "version": "1.0.0"},
-                {"name": "python-code-review", "version": "1.0.0"},
+                {"name": "go-code-review", "version": DEFAULT_SKILL_VERSION},
+                {"name": "python-code-review", "version": DEFAULT_SKILL_VERSION},
             ],
         )
         result = _resolve_all_deps("kfp-review", skills_root)
@@ -257,19 +275,19 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "a",
-            dependencies=[{"name": "shared", "version": "1.0.0"}],
+            dependencies=[{"name": "shared", "version": DEFAULT_SKILL_VERSION}],
         )
         _make_artifact(
             skills_root,
             "b",
-            dependencies=[{"name": "shared", "version": "1.0.0"}],
+            dependencies=[{"name": "shared", "version": DEFAULT_SKILL_VERSION}],
         )
         _make_artifact(
             skills_root,
             "root",
             dependencies=[
-                {"name": "a", "version": "1.0.0"},
-                {"name": "b", "version": "1.0.0"},
+                {"name": "a", "version": DEFAULT_SKILL_VERSION},
+                {"name": "b", "version": DEFAULT_SKILL_VERSION},
             ],
         )
         result = _resolve_all_deps("root", skills_root)
@@ -279,12 +297,12 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "a",
-            dependencies=[{"name": "b", "version": "1.0.0"}],
+            dependencies=[{"name": "b", "version": DEFAULT_SKILL_VERSION}],
         )
         _make_artifact(
             skills_root,
             "b",
-            dependencies=[{"name": "a", "version": "1.0.0"}],
+            dependencies=[{"name": "a", "version": DEFAULT_SKILL_VERSION}],
         )
         with pytest.raises(SystemExit):
             _resolve_all_deps("a", skills_root)
@@ -293,7 +311,7 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "self-ref",
-            dependencies=[{"name": "self-ref", "version": "1.0.0"}],
+            dependencies=[{"name": "self-ref", "version": DEFAULT_SKILL_VERSION}],
         )
         with pytest.raises(SystemExit):
             _resolve_all_deps("self-ref", skills_root)
@@ -303,7 +321,7 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "root",
-            dependencies=[{"name": "dep", "version": "1.0.0"}],
+            dependencies=[{"name": "dep", "version": DEFAULT_SKILL_VERSION}],
         )
         with pytest.raises(SystemExit):
             _resolve_all_deps("root", skills_root)
@@ -314,8 +332,10 @@ class TestResolveAllDeps:
             "root",
             raw_json=json.dumps(
                 {
-                    "metadata": {"name": "root", "version": "1.0.0"},
-                    "dependencies": [{"name": "../escape", "version": "1.0.0"}],
+                    "metadata": {"name": "root", "version": DEFAULT_SKILL_VERSION},
+                    "dependencies": [
+                        {"name": "../escape", "version": DEFAULT_SKILL_VERSION}
+                    ],
                 }
             ),
         )
@@ -365,7 +385,7 @@ class TestPackAndPush:
         assert calls[0][1] == "validate"
         assert calls[1][1] == "pack"
         assert calls[2][1] == "push"
-        assert "localhost:5050/skills/my-skill:1.0.0" in calls[2]
+        assert f"localhost:5050/skills/my-skill:{DEFAULT_SKILL_VERSION}" in calls[2]
 
     def test_missing_skill_exits(self, skills_root: Path) -> None:
         skills_root.mkdir(parents=True, exist_ok=True)
@@ -428,7 +448,10 @@ class TestPackAndPush:
             "my-skill",
             raw_json=json.dumps(
                 {
-                    "metadata": {"name": "different-name", "version": "1.0.0"},
+                    "metadata": {
+                        "name": "different-name",
+                        "version": DEFAULT_SKILL_VERSION,
+                    },
                     "spec": {"entrypoint": "SKILL.md", "files": ["SKILL.md"]},
                 }
             ),
@@ -470,7 +493,7 @@ class TestInstallSkill:
         _make_artifact(
             skills_root,
             "go-review",
-            dependencies=[{"name": "review-shared", "version": "1.0.0"}],
+            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
