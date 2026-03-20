@@ -1,6 +1,6 @@
 [project]
 name = "ai-skills"
-version = "0.1.0"
+version = "0.2.0"
 description = "A monorepo for AI skills and projects with shared utilities and standardized structure"
 readme = "README.md"
 requires-python = ">=3.14"

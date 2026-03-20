@@ -27,7 +27,7 @@ from install import (
 )
 
 # Synthetic artifacts in this module use the same dev version as skills on main.
-DEFAULT_SKILL_VERSION = "0.2.0-SNAPSHOT"
+DEFAULT_SKILL_VERSION = "0.2.0"
 
 
 # ---------------------------------------------------------------------------
