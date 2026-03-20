@@ -78,7 +78,7 @@ Consolidation can **drop a distinct equivalence class** or hide a gap. Immediate
 
 After Phase F → G is settled, **review** the change set as the final gate before completion.
 
-1. Read and follow [`../generic-review/SKILL.md`](../generic-review/SKILL.md) against the current change set (obtain the full diff via git per `generic-review-checklist.md` unless the user has already pinned a specific scope).
+1. Read and follow [`../generic-review/SKILL.md`](../generic-review/SKILL.md) against the current change set (obtain the full diff via git per [`generic-review-checklist.md`](../generic-review/generic-review-checklist.md) unless the user has already pinned a specific scope).
 2. **Fix** all issues you accept; re-run tests and linters/typecheck as appropriate for the repo.
 3. **Repeat** review → fix until there are no remaining issues you agree should block completion.
 
