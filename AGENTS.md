@@ -10,6 +10,7 @@ This file tracks AI agents and skills within the monorepo.
 | python-code-review | Code Review | General Python code review workflow for correctness, security, type safety, and tests | Active | `skills/python-code-review/` |
 | kubeflow-pipelines-review | Code Review | KFP-specific review workflow layered on Go and Python baseline checks and control-plane rules | Active | `skills/kubeflow-pipelines-review/` |
 | pr-review | Code Review | Review pull requests from URL with gh context, comment-resolution validation, full diff review, and skill-based routing | Active | `skills/pr-review/` |
+| tdd | Development | Test-first workflow with scenario gates before/after implementation, overlap pass and post-overlap scenario re-audit (F↔G), review/fix loop last | Active | `skills/tdd/` |
 
 ## Adding New Agents
 

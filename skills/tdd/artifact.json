@@ -1,0 +1,13 @@
+{
+  "apiVersion": "striatum.dev/v1alpha1",
+  "kind": "Skill",
+  "metadata": {
+    "name": "tdd",
+    "version": "1.0.0"
+  },
+  "spec": {
+    "entrypoint": "SKILL.md",
+    "files": ["SKILL.md", "README.md", "scenario-coverage.md"]
+  },
+  "dependencies": []
+}
