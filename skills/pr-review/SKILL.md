@@ -1,6 +1,6 @@
 ---
 name: pr-review
-description: Review GitHub pull requests from a PR URL using gh, including full diff inspection, addressed-comment validation, and language/domain-specific review checklists. Use when the user shares a PR link or asks for a pull request review.
+description: Review GitHub pull requests from a PR URL using gh, including full diff inspection, addressed-comment validation, then the generic-review pipeline for routing and output. Use when the user shares a PR link or asks for a pull request review.
 ---
 
 # PR Review
@@ -9,24 +9,13 @@ description: Review GitHub pull requests from a PR URL using gh, including full 
 
 Use this skill when the user provides a pull request URL or asks for a full PR review.
 
-## Review Workflow
+## Review workflow
 
-1. Read `../review-shared/general-review-requirements.md` and apply all requirements.
-2. Read `pr-review-checklist.md` and execute every check.
-3. Parse owner/repo/PR number from the provided URL.
-4. Collect PR metadata, comments, and review context with `gh`.
-5. Validate whether all review comments were addressed and whether each resolution is technically sound.
-6. Review the complete pull request diff before writing findings.
-7. Route to the correct specialized review skill:
-   - If project/repo context indicates Kubeflow Pipelines or Data Science Pipelines, apply `../kubeflow-pipelines-review/SKILL.md`.
-   - Otherwise infer languages used by the project and apply matching language skills:
-     - Go: `../go-code-review/SKILL.md`
-     - Python: `../python-code-review/SKILL.md`
-8. Classify findings with `../review-shared/severity-rubric.md`.
-9. Present results using `../review-shared/output-template.md`.
+1. Parse owner/repo/PR number from the provided URL.
+2. Read `pr-review-checklist.md` and execute every check (PR context, full diff via `gh`, comment-thread validation).
+3. Read and follow `../generic-review/SKILL.md` for the remainder of the review. **Do not** duplicate `general-review-requirements` or routing steps before that—`generic-review` owns them.
+4. When continuing from this skill: **skip** diff-acquisition commands in `../generic-review/generic-review-checklist.md` and use the diff already obtained with `gh pr diff <url>`.
 
-## Routing Rules
+## Routing rules
 
-- KFP/DSP takes precedence over language-only routing.
-- For non-KFP/DSP repositories, apply all relevant language checklists when multiple languages are materially changed.
-- If a language-specific skill is unavailable for a detected language, continue with shared checks and state that limitation explicitly.
+Routing to specialized skills is defined in `../generic-review/SKILL.md` (KFP/DSP precedence, then Go/Python; multiple languages when materially changed; state limitations if a language skill is unavailable).

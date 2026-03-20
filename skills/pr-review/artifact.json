@@ -9,10 +9,5 @@
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "README.md", "pr-review-checklist.md"]
   },
-  "dependencies": [
-    { "name": "review-shared", "version": "1.0.0" },
-    { "name": "kubeflow-pipelines-review", "version": "1.0.0" },
-    { "name": "go-code-review", "version": "1.0.0" },
-    { "name": "python-code-review", "version": "1.0.0" }
-  ]
+  "dependencies": [{ "name": "generic-review", "version": "1.0.0" }]
 }

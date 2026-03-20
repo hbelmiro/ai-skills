@@ -1,6 +1,6 @@
 # tdd
 
-Test-driven development workflow for agents: tests and scenario coverage first, implementation second, post-implementation scenario pass, refactor, overlap pruning, post-overlap scenario audit (F↔G until settled), then **review/fix loop last** (Phase H).
+Test-driven development workflow for agents: tests and scenario coverage first, implementation second, post-implementation scenario pass, refactor, overlap pruning, post-overlap scenario audit (F↔G until settled), then **review/fix loop last** (Phase H) using [`generic-review`](../generic-review/).
 
 ## Contents
 

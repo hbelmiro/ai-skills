@@ -1,0 +1,18 @@
+{
+  "apiVersion": "striatum.dev/v1alpha1",
+  "kind": "Skill",
+  "metadata": {
+    "name": "generic-review",
+    "version": "1.0.0"
+  },
+  "spec": {
+    "entrypoint": "SKILL.md",
+    "files": ["SKILL.md", "README.md", "generic-review-checklist.md"]
+  },
+  "dependencies": [
+    { "name": "review-shared", "version": "1.0.0" },
+    { "name": "kubeflow-pipelines-review", "version": "1.0.0" },
+    { "name": "go-code-review", "version": "1.0.0" },
+    { "name": "python-code-review", "version": "1.0.0" }
+  ]
+}
