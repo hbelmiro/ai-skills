@@ -3,13 +3,13 @@
   "kind": "Skill",
   "metadata": {
     "name": "go-code-review",
-    "version": "1.0.0"
+    "version": "0.2.0-SNAPSHOT"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "go-review-checklist.md"]
   },
   "dependencies": [
-    { "name": "review-shared", "version": "1.0.0" }
+    { "name": "review-shared", "version": "0.2.0-SNAPSHOT" }
   ]
 }

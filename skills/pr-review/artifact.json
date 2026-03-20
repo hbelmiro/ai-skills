@@ -3,11 +3,11 @@
   "kind": "Skill",
   "metadata": {
     "name": "pr-review",
-    "version": "1.0.0"
+    "version": "0.2.0-SNAPSHOT"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "README.md", "pr-review-checklist.md"]
   },
-  "dependencies": [{ "name": "generic-review", "version": "1.0.0" }]
+  "dependencies": [{ "name": "generic-review", "version": "0.2.0-SNAPSHOT" }]
 }
