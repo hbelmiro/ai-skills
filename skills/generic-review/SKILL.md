@@ -2,8 +2,9 @@
 name: generic-review
 description: >-
   Review a change set without a PR URL: full diff (git or already fetched), shared review requirements,
-  language/domain routing (KFP, Go, Python), severity rubric, and output template. Use for local or branch
-  reviews, pre-push review, or after pr-review has collected the PR diff via gh.
+  language/domain routing (KFP, Go, Python), severity rubric, output template, and review-the-review
+  self-validation. Use for local or branch reviews, pre-push review, or after pr-review has collected
+  the PR diff via gh.
 ---
 
 # Generic Review
@@ -32,6 +33,7 @@ Before the workflow below, you must have:
      - Python: `../python-code-review/SKILL.md`
 4. Classify findings with `../review-shared/severity-rubric.md`.
 5. Present results using `../review-shared/output-template.md`.
+6. Read `../review-shared/review-the-review.md` and apply it to your completed review. Fix any issues in-place before presenting.
 
 ## Routing rules
 
