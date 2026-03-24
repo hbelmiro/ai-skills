@@ -16,3 +16,5 @@ uv run python src/install.py --personal --skill tdd
 ```
 
 (Requires registry/env setup as documented there.)
+
+Installing `tdd` also installs transitive review skills (for example `review-shared`, `generic-review`, `go-code-review`, `python-code-review`, and `kubeflow-pipelines-review`) so Phase H can follow routed checklists. **Uninstall** only removes the skill you name; see the [Installing Skills](../../README.md#installing-skills) section for how to remove leftover dependency skills if needed.

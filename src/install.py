@@ -224,7 +224,12 @@ def install_skill(
     project: str | None = None,
     force: bool = False,
 ) -> None:
-    """Pack, push, and install a skill and all its transitive dependencies."""
+    """Pack, push, and install a skill and all its transitive dependencies.
+
+    Each dependency is installed as its own Cursor skill (sibling directories
+    under ``.cursor/skills/``). ``uninstall_skill`` removes only the named
+    skill; see the root README *Installing Skills* for uninstall notes.
+    """
     _validate_skill_name(skill_name)
     skills_root = _skills_root()
     registry = _registry()
@@ -235,19 +240,33 @@ def install_skill(
     for name in all_skills:
         pack_and_push(name, skills_root, registry, striatum=striatum)
 
-    root_dir = skills_root / skill_name
-    version = _read_artifact_version(root_dir)
-    artifact_name = _read_artifact_name(root_dir)
-    ref = _reference(registry, artifact_name, version)
+    n = len(all_skills)
+    installed_ok: list[str] = []
+    for i, name in enumerate(all_skills, start=1):
+        skill_dir = skills_root / name
+        version = _read_artifact_version(skill_dir)
+        artifact_name = _read_artifact_name(skill_dir)
+        ref = _reference(registry, artifact_name, version)
 
-    cmd = [striatum, "skill", "install", "--target", "cursor", ref]
-    if project:
-        cmd.extend(["--project", str(project)])
-    if force:
-        cmd.append("--force")
+        cmd = [striatum, "skill", "install", "--target", "cursor", ref]
+        if project:
+            cmd.extend(["--project", str(project)])
+        if force:
+            cmd.append("--force")
 
-    _run(cmd)
-    print(f"installed {skill_name}", file=sys.stderr)
+        print(f"installing {name} ({i}/{n})", file=sys.stderr)
+        try:
+            _run(cmd)
+        except SystemExit:
+            if installed_ok:
+                print(
+                    "error: successful installs before failure: "
+                    + ", ".join(installed_ok),
+                    file=sys.stderr,
+                )
+            raise
+        installed_ok.append(name)
+        print(f"installed {name}", file=sys.stderr)
 
 
 def uninstall_skill(
@@ -255,7 +274,11 @@ def uninstall_skill(
     *,
     project: str | None = None,
 ) -> None:
-    """Uninstall a skill via striatum."""
+    """Uninstall one skill via striatum.
+
+    Does not remove other skills that were installed as transitive
+    dependencies of this skill. Uninstall those separately if needed.
+    """
     _validate_skill_name(skill_name)
     striatum = _find_striatum()
 

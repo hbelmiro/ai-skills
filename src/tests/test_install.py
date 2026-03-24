@@ -90,6 +90,52 @@ def _fake_run_factory() -> tuple[list[list[str]], object]:
     return calls, fake_run
 
 
+def _is_striatum_skill_install_argv(args: list[str]) -> bool:
+    """True if *args* is a ``striatum skill install …`` argv.
+
+    Global flags may appear before the ``skill`` subcommand (e.g.
+    ``striatum --debug skill install``). Matches production argv from
+    ``install_skill`` which builds ``[striatum, "skill", "install", ...]``.
+    """
+    try:
+        i = args.index("skill")
+    except ValueError:
+        return False
+    return i + 1 < len(args) and args[i + 1] == "install"
+
+
+# ---------------------------------------------------------------------------
+# _is_striatum_skill_install_argv
+# ---------------------------------------------------------------------------
+
+
+class TestIsStriatumSkillInstallArgv:
+    @pytest.mark.parametrize(
+        ("argv", "expected"),
+        [
+            (
+                ["/usr/bin/striatum", "skill", "install", "--target", "cursor", "ref"],
+                True,
+            ),
+            (
+                [
+                    "/usr/bin/striatum",
+                    "--debug",
+                    "skill",
+                    "install",
+                    "--target",
+                    "cursor",
+                ],
+                True,
+            ),
+            (["/usr/bin/striatum", "skill", "pack"], False),
+            (["/usr/bin/striatum", "validate"], False),
+        ],
+    )
+    def test_detects_skill_install_shape(self, argv: list[str], expected: bool) -> None:
+        assert _is_striatum_skill_install_argv(argv) is expected
+
+
 # ---------------------------------------------------------------------------
 # _validate_skill_name
 # ---------------------------------------------------------------------------
@@ -507,13 +553,53 @@ class TestInstallSkill:
 
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 2
-        assert "review-shared" in push_calls[0][-1]
-        assert "go-review" in push_calls[1][-1]
+        assert any("review-shared" in str(arg) for arg in push_calls[0])
+        assert any("go-review" in str(arg) for arg in push_calls[1])
 
-        install_calls = [c for c in calls if len(c) > 2 and c[2] == "install"]
-        assert len(install_calls) == 1
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        assert len(install_calls) == 2
         assert "--target" in install_calls[0]
         assert "cursor" in install_calls[0]
+        assert any("review-shared" in str(arg) for arg in install_calls[0])
+        assert any("go-review" in str(arg) for arg in install_calls[1])
+
+    def test_install_failure_prints_prior_successes(
+        self,
+        skills_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _make_artifact(skills_root, "review-shared")
+        _make_artifact(
+            skills_root,
+            "go-review",
+            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
+        )
+
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        install_attempts = 0
+
+        def fake_run(
+            args: list[str], **kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
+            nonlocal install_attempts
+            if _is_striatum_skill_install_argv(args):
+                install_attempts += 1
+                if install_attempts >= 2:
+                    raise SystemExit(1)
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        monkeypatch.setattr("install._run", fake_run)
+
+        with pytest.raises(SystemExit):
+            install_skill("go-review")
+
+        err = capsys.readouterr().err
+        assert "successful installs before failure" in err
+        assert "review-shared" in err
 
     def test_project_flag_passed(
         self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
@@ -528,7 +614,7 @@ class TestInstallSkill:
 
         install_skill("my-skill", project="/tmp/my-project")
 
-        install_calls = [c for c in calls if len(c) > 2 and c[2] == "install"]
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
         assert "--project" in install_calls[0]
         assert "/tmp/my-project" in install_calls[0]
 
@@ -545,7 +631,7 @@ class TestInstallSkill:
 
         install_skill("my-skill", force=True)
 
-        install_calls = [c for c in calls if len(c) > 2 and c[2] == "install"]
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
         assert "--force" in install_calls[0]
 
     def test_missing_registry_exits(
@@ -701,7 +787,12 @@ class TestSmoke:
         env = dict(os.environ)
 
         result = _run_cli(
-            "--skill", "go-code-review", "--project", str(project_dir), env=env
+            "--skill",
+            "go-code-review",
+            "--project",
+            str(project_dir),
+            "--force",
+            env=env,
         )
         assert result.returncode == 0, result.stderr
 

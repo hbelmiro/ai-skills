@@ -20,7 +20,8 @@ implementation-first or spike-then-test.
 
 ## Reviewer stance
 
-- For Phase H, rely on `../generic-review/SKILL.md`, which pulls
+- For Phase H, execute the full workflow in `../generic-review/SKILL.md`
+  (including routing to language/domain skills below); that pulls
   independent-review behavior from `../review-shared/`.
 - For phases A-G, use `scenario-coverage.md` prompts (especially
   "Assumption challenge") to avoid self-confirming coverage.
@@ -88,13 +89,19 @@ Consolidation can **drop a distinct equivalence class** or hide a gap. Immediate
 
 After Phase F → G is settled, **review** the change set as the final gate before completion.
 
-1. Run the final review strictly per `../generic-review/SKILL.md`
-   against the current change set (obtain the full diff via git per
-   [`generic-review-checklist.md`](../generic-review/generic-review-checklist.md)
-   unless the user has already pinned a specific scope), including
-   independent-review checks inherited from `review-shared`.
+1. Perform **every** step in `../generic-review/SKILL.md` § **Review workflow** (steps 1–6), in order—do not skip routing or review-the-review:
+   1. Read `../review-shared/general-review-requirements.md` and apply all requirements.
+   2. Read [`../generic-review/generic-review-checklist.md`](../generic-review/generic-review-checklist.md) and execute every check (obtain the full diff via git unless the user has already pinned a specific scope).
+   3. **Route** to specialized review skills: read and apply the matching `SKILL.md` files per `../generic-review/SKILL.md` (Kubeflow Pipelines / DSP when context applies; otherwise Go and/or Python when those languages are materially changed). **Do not** substitute a shallow pass—use the routed checklists.
+   4. Classify findings with `../review-shared/severity-rubric.md`.
+   5. Present results using `../review-shared/output-template.md`.
+   6. Read `../review-shared/review-the-review.md` and apply it; fix any issues in-place before presenting.
 2. **Fix** all issues you accept; re-run tests and linters/typecheck as appropriate for the repo.
 3. **Repeat** review → fix until there are no remaining issues you agree should block completion.
+
+### Routing rules
+
+Routing to specialized skills is defined in `../generic-review/SKILL.md` (KFP/DSP precedence, then Go/Python; multiple languages when materially changed; state limitations if a language skill is unavailable). When the change set touches those stacks, the corresponding skill checklists are **mandatory** for Phase H—not optional add-ons.
 
 ## Handoff checklist
 
