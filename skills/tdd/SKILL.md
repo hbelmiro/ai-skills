@@ -13,7 +13,17 @@ description: >-
 
 ## When to apply
 
-Use this workflow for new behavior or refactors where tests should lead design. Skip strict red-first only when the user explicitly asks for implementation-first or spike-then-test.
+Use this workflow for new behavior or refactors where tests should lead
+design.
+Skip strict red-first only when the user explicitly asks for
+implementation-first or spike-then-test.
+
+## Reviewer stance
+
+- For Phase H, rely on `../generic-review/SKILL.md`, which pulls
+  independent-review behavior from `../review-shared/`.
+- For phases A-G, use `scenario-coverage.md` prompts (especially
+  "Assumption challenge") to avoid self-confirming coverage.
 
 ## Operating principles
 
@@ -78,7 +88,11 @@ Consolidation can **drop a distinct equivalence class** or hide a gap. Immediate
 
 After Phase F → G is settled, **review** the change set as the final gate before completion.
 
-1. Read and follow [`../generic-review/SKILL.md`](../generic-review/SKILL.md) against the current change set (obtain the full diff via git per [`generic-review-checklist.md`](../generic-review/generic-review-checklist.md) unless the user has already pinned a specific scope).
+1. Run the final review strictly per `../generic-review/SKILL.md`
+   against the current change set (obtain the full diff via git per
+   [`generic-review-checklist.md`](../generic-review/generic-review-checklist.md)
+   unless the user has already pinned a specific scope), including
+   independent-review checks inherited from `review-shared`.
 2. **Fix** all issues you accept; re-run tests and linters/typecheck as appropriate for the repo.
 3. **Repeat** review → fix until there are no remaining issues you agree should block completion.
 
@@ -86,7 +100,7 @@ After Phase F → G is settled, **review** the change set as the final gate befo
 
 Copy and track:
 
-```
+```text
 TDD progress:
 - [ ] Phase A: failing tests in place
 - [ ] Phase B: scenario loop complete (pre-implementation)

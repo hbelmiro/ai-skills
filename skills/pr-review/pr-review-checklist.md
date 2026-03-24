@@ -11,9 +11,11 @@ Apply every check explicitly.
 
 ## Mandatory Diff Review
 
-- Review the full PR diff (`gh pr diff <url>`) before reporting findings.
-- Do not limit review to selected files or snippets when assessing correctness and risk.
-- Inspect impacted call paths and cross-file effects, not only edited lines.
+- Fetch and retain the full PR diff with `gh pr diff <url>`.
+- Ensure the diff includes every changed file; pass this full diff to
+  `generic-review` for risk analysis and findings.
+- Ensure mandatory full-diff inspection is executed in
+  `generic-review-checklist.md`; do not skip that review step.
 
 ## Comment Resolution Validation
 

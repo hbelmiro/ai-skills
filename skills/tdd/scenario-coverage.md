@@ -1,9 +1,16 @@
 # Scenario coverage prompts
 
-Use this as a **checklist to think with**, not a mandatory universal list. For each row, ask: “Do we need this for *this* change?” If yes, there should be a test (or an explicit documented reason why not, e.g. out of scope).
+Use this as a **checklist to think with**, not a mandatory universal list.
+For each row, ask: "Do we need this for *this* change?"
+If yes, there should be a test
+(or an explicit documented reason why not, e.g. out of scope).
+
+Apply these prompts as an independent reviewer,
+not as the implementation author.
+Try to falsify assumptions before accepting coverage as sufficient.
 
 | Area | Prompt |
-|------|--------|
+| ---- | ------ |
 | Happy path | Primary success case with realistic inputs |
 | Boundaries | Min/max, empty, single element, “full” collections, off-by-one |
 | Invalid input | Malformed types, out-of-range, missing required fields |
@@ -14,6 +21,7 @@ Use this as a **checklist to think with**, not a mandatory universal list. For e
 | Concurrency | Races, locks, parallel safety if applicable |
 | I/O | Partial failure, unavailable dependency, timeout, retry behavior |
 | Observability | Logging/metrics behavior only if part of the contract |
+| Assumption challenge | A plausible "this could fail differently" hypothesis has a test or explicit out-of-scope note |
 
 **Definition of “enough”**: A reviewer could not reasonably ask “what happens if …?” for an obvious case implied by the spec without finding a test or an explicit out-of-scope note.
 

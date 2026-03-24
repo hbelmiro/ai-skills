@@ -14,8 +14,12 @@ Skip this section when the full diff was already obtained (including via `pr-rev
 ## Mandatory diff review
 
 - Review the **full** diff before reporting findings.
+- Build hypotheses only **after** the full-diff pass.
+- Avoid selective confirmation from isolated snippets.
 - Do not limit review to selected files or snippets when assessing correctness and risk.
 - Inspect impacted call paths and cross-file effects, not only edited lines.
+- For high-impact claims, look for disconfirming evidence in nearby
+  call paths or tests.
 
 ## Discussion resolution check
 
@@ -26,5 +30,7 @@ Skip this section when the full diff was already obtained (including via `pr-rev
 
 - Prioritize security, data integrity, reliability, and compatibility risks first.
 - Verify tests cover changed behavior, edge cases, and failure paths.
+- Challenge happy-path assumptions by checking at least one adversarial
+  scenario ("what breaks if this assumption is wrong?").
 - Explicitly answer: "Do tests cover enough scenarios?"
 - State assumptions and open questions when intent is unclear.
