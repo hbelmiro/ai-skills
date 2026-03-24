@@ -145,8 +145,8 @@ def _available_skills(skills_root: Path) -> list[str]:
     )
 
 
-def _resolve_all_deps(skill_name: str, skills_root: Path) -> list[str]:
-    """Topologically resolve transitive dependencies (leaves first)."""
+def _ordered_skills_postorder(roots: list[str], skills_root: Path) -> list[str]:
+    """Dependency order for *roots*: each skill once, dependencies before dependents."""
     ordered: list[str] = []
     visited: set[str] = set()
     in_progress: set[str] = set()
@@ -177,8 +177,19 @@ def _resolve_all_deps(skill_name: str, skills_root: Path) -> list[str]:
         visited.add(name)
         ordered.append(name)
 
-    _walk(skill_name)
+    for name in roots:
+        _walk(name)
     return ordered
+
+
+def _resolve_all_deps(skill_name: str, skills_root: Path) -> list[str]:
+    """Topologically resolve transitive dependencies (leaves first)."""
+    return _ordered_skills_postorder([skill_name], skills_root)
+
+
+def _global_install_order(skills_root: Path) -> list[str]:
+    """Topological order of every skill under *skills_root* (dependencies before dependents)."""
+    return _ordered_skills_postorder(_available_skills(skills_root), skills_root)
 
 
 def pack_and_push(
@@ -218,31 +229,29 @@ def pack_and_push(
     print(f"packed and pushed {ref}", file=sys.stderr)
 
 
-def install_skill(
-    skill_name: str,
+def _pack_push_ordered(
+    names: list[str],
+    skills_root: Path,
+    registry: str,
     *,
+    striatum: str,
+) -> None:
+    for name in names:
+        pack_and_push(name, skills_root, registry, striatum=striatum)
+
+
+def _install_ordered_skills(
+    names: list[str],
+    skills_root: Path,
+    registry: str,
+    *,
+    striatum: str,
     project: str | None = None,
     force: bool = False,
 ) -> None:
-    """Pack, push, and install a skill and all its transitive dependencies.
-
-    Each dependency is installed as its own Cursor skill (sibling directories
-    under ``.cursor/skills/``). ``uninstall_skill`` removes only the named
-    skill; see the root README *Installing Skills* for uninstall notes.
-    """
-    _validate_skill_name(skill_name)
-    skills_root = _skills_root()
-    registry = _registry()
-    striatum = _find_striatum()
-
-    all_skills = _resolve_all_deps(skill_name, skills_root)
-
-    for name in all_skills:
-        pack_and_push(name, skills_root, registry, striatum=striatum)
-
-    n = len(all_skills)
+    n = len(names)
     installed_ok: list[str] = []
-    for i, name in enumerate(all_skills, start=1):
+    for i, name in enumerate(names, start=1):
         skill_dir = skills_root / name
         version = _read_artifact_version(skill_dir)
         artifact_name = _read_artifact_name(skill_dir)
@@ -267,6 +276,61 @@ def install_skill(
             raise
         installed_ok.append(name)
         print(f"installed {name}", file=sys.stderr)
+
+
+def install_skill(
+    skill_name: str,
+    *,
+    project: str | None = None,
+    force: bool = False,
+) -> None:
+    """Pack, push, and install a skill and all its transitive dependencies.
+
+    Each dependency is installed as its own Cursor skill (sibling directories
+    under ``.cursor/skills/``). ``uninstall_skill`` removes only the named
+    skill; see the root README *Installing Skills* for uninstall notes.
+    """
+    _validate_skill_name(skill_name)
+    skills_root = _skills_root()
+    registry = _registry()
+    striatum = _find_striatum()
+
+    all_skills = _resolve_all_deps(skill_name, skills_root)
+
+    _pack_push_ordered(all_skills, skills_root, registry, striatum=striatum)
+    _install_ordered_skills(
+        all_skills,
+        skills_root,
+        registry,
+        striatum=striatum,
+        project=project,
+        force=force,
+    )
+
+
+def install_all_skills(
+    *,
+    project: str | None = None,
+    force: bool = False,
+) -> None:
+    """Pack, push, and install every skill under ``skills/`` (each once, dependency order)."""
+    skills_root = _skills_root()
+    order = _global_install_order(skills_root)
+    if not order:
+        return
+
+    registry = _registry()
+    striatum = _find_striatum()
+
+    _pack_push_ordered(order, skills_root, registry, striatum=striatum)
+    _install_ordered_skills(
+        order,
+        skills_root,
+        registry,
+        striatum=striatum,
+        project=project,
+        force=force,
+    )
 
 
 def uninstall_skill(
@@ -330,6 +394,11 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Reinstall all tracked skills from striatum install DB",
     )
+    parser.add_argument(
+        "--install-all",
+        action="store_true",
+        help="Pack, push, and install every skill in this repository's skills/ directory",
+    )
     return parser
 
 
@@ -337,18 +406,36 @@ def _validate_cli_args(
     args: argparse.Namespace, parser: argparse.ArgumentParser
 ) -> None:
     if args.reinstall_all and (
-        args.skill or args.personal or args.project or args.uninstall
+        args.skill
+        or args.personal
+        or args.project
+        or args.uninstall
+        or args.install_all
     ):
         parser.error(
-            "--reinstall-all cannot be combined with --skill/--personal/--project/--uninstall"
+            "--reinstall-all cannot be combined with --skill/--personal/--project/"
+            "--uninstall/--install-all"
         )
     if args.reinstall_all:
         return
+
+    if args.install_all and (args.skill or args.uninstall):
+        parser.error("--install-all cannot be combined with --skill or --uninstall")
+    if args.install_all:
+        if args.personal == bool(args.project):
+            parser.error(
+                "exactly one of --personal or --project is required with --install-all"
+            )
+        return
+
     if not args.skill:
-        parser.error("--skill is required unless --reinstall-all is used")
+        parser.error(
+            "--skill is required unless --reinstall-all or --install-all is used"
+        )
     if args.personal == bool(args.project):
         parser.error(
-            "exactly one of --personal or --project is required unless --reinstall-all is used"
+            "exactly one of --personal or --project is required unless "
+            "--reinstall-all is used"
         )
 
 
@@ -366,6 +453,10 @@ def main() -> None:
         if args.project
         else None
     )
+
+    if args.install_all:
+        install_all_skills(project=project_path, force=args.force)
+        return
 
     if args.uninstall:
         uninstall_skill(

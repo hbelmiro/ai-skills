@@ -11,8 +11,11 @@ from textwrap import dedent
 
 import pytest
 
+import install as install_module
+
 from install import (
     _available_skills,
+    _global_install_order,
     _load_artifact,
     _read_artifact_name,
     _read_artifact_version,
@@ -20,6 +23,7 @@ from install import (
     _resolve_all_deps,
     _run,
     _validate_skill_name,
+    install_all_skills,
     install_skill,
     pack_and_push,
     reinstall_all,
@@ -390,6 +394,97 @@ class TestResolveAllDeps:
 
 
 # ---------------------------------------------------------------------------
+# _global_install_order
+# ---------------------------------------------------------------------------
+
+
+class TestGlobalInstallOrder:
+    def test_independent_skills_sorted(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "zebra")
+        _make_artifact(skills_root, "alpha")
+        _make_artifact(skills_root, "middle")
+        assert _global_install_order(skills_root) == ["alpha", "middle", "zebra"]
+
+    def test_linear_chain_dep_before_dependent(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "base")
+        _make_artifact(
+            skills_root,
+            "child",
+            dependencies=[{"name": "base", "version": DEFAULT_SKILL_VERSION}],
+        )
+        order = _global_install_order(skills_root)
+        assert order == ["base", "child"]
+
+    def test_diamond_shared_once_before_consumers_and_root(
+        self, skills_root: Path
+    ) -> None:
+        _make_artifact(skills_root, "shared")
+        _make_artifact(
+            skills_root,
+            "consumer-a",
+            dependencies=[{"name": "shared", "version": DEFAULT_SKILL_VERSION}],
+        )
+        _make_artifact(
+            skills_root,
+            "consumer-b",
+            dependencies=[{"name": "shared", "version": DEFAULT_SKILL_VERSION}],
+        )
+        _make_artifact(
+            skills_root,
+            "root",
+            dependencies=[
+                {"name": "consumer-a", "version": DEFAULT_SKILL_VERSION},
+                {"name": "consumer-b", "version": DEFAULT_SKILL_VERSION},
+            ],
+        )
+        order = _global_install_order(skills_root)
+        assert order.count("shared") == 1
+        assert order.index("shared") < order.index("consumer-a")
+        assert order.index("shared") < order.index("consumer-b")
+        assert order.index("consumer-a") < order.index("root")
+        assert order.index("consumer-b") < order.index("root")
+        assert len(order) == 4
+
+    def test_cycle_detected(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "a",
+            dependencies=[{"name": "b", "version": DEFAULT_SKILL_VERSION}],
+        )
+        _make_artifact(
+            skills_root,
+            "b",
+            dependencies=[{"name": "a", "version": DEFAULT_SKILL_VERSION}],
+        )
+        with pytest.raises(SystemExit):
+            _global_install_order(skills_root)
+
+    def test_self_cycle_detected(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "self-ref",
+            dependencies=[{"name": "self-ref", "version": DEFAULT_SKILL_VERSION}],
+        )
+        with pytest.raises(SystemExit):
+            _global_install_order(skills_root)
+
+    def test_version_mismatch_exits(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "dep", version="2.0.0")
+        _make_artifact(
+            skills_root,
+            "root",
+            dependencies=[{"name": "dep", "version": DEFAULT_SKILL_VERSION}],
+        )
+        with pytest.raises(SystemExit):
+            _global_install_order(skills_root)
+
+    def test_empty_skills_dir(self, tmp_path: Path) -> None:
+        empty = tmp_path / "skills"
+        empty.mkdir()
+        assert _global_install_order(empty) == []
+
+
+# ---------------------------------------------------------------------------
 # _run
 # ---------------------------------------------------------------------------
 
@@ -653,6 +748,112 @@ class TestInstallSkill:
 
 
 # ---------------------------------------------------------------------------
+# install_all_skills
+# ---------------------------------------------------------------------------
+
+
+class TestInstallAllSkills:
+    def test_packs_and_installs_each_skill_once_in_dependency_order(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(skills_root, "review-shared")
+        _make_artifact(
+            skills_root,
+            "go-review",
+            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
+        )
+
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_all_skills()
+
+        push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
+        assert len(push_calls) == 2
+
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        assert len(install_calls) == 2
+        assert any("review-shared" in str(arg) for arg in install_calls[0])
+        assert any("go-review" in str(arg) for arg in install_calls[1])
+
+    def test_empty_skills_no_subprocess_and_no_registry_required(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        empty = tmp_path / "skills"
+        empty.mkdir()
+        monkeypatch.delenv("STRIATUM_REGISTRY", raising=False)
+        monkeypatch.setattr("install._skills_root", lambda: empty)
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_all_skills()
+
+        assert calls == []
+
+    def test_project_and_force_passed_to_install(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_all_skills(project="/tmp/my-project", force=True)
+
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        assert len(install_calls) == 1
+        assert "--project" in install_calls[0]
+        assert "/tmp/my-project" in install_calls[0]
+        assert "--force" in install_calls[0]
+
+    def test_install_failure_prints_prior_successes(
+        self,
+        skills_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _make_artifact(skills_root, "review-shared")
+        _make_artifact(
+            skills_root,
+            "go-review",
+            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
+        )
+
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        install_attempts = 0
+
+        def fake_run(
+            args: list[str], **kwargs: object
+        ) -> subprocess.CompletedProcess[str]:
+            nonlocal install_attempts
+            if _is_striatum_skill_install_argv(args):
+                install_attempts += 1
+                if install_attempts >= 2:
+                    raise SystemExit(1)
+            return subprocess.CompletedProcess(args, 0, "", "")
+
+        monkeypatch.setattr("install._run", fake_run)
+
+        with pytest.raises(SystemExit):
+            install_all_skills()
+
+        err = capsys.readouterr().err
+        assert "successful installs before failure" in err
+        assert "review-shared" in err
+
+
+# ---------------------------------------------------------------------------
 # uninstall_skill
 # ---------------------------------------------------------------------------
 
@@ -759,6 +960,58 @@ class TestCli:
     def test_reinstall_all_conflicts_with_uninstall(self) -> None:
         result = _run_cli("--reinstall-all", "--uninstall")
         assert result.returncode != 0
+
+    def test_install_all_requires_target(self) -> None:
+        result = _run_cli("--install-all")
+        assert result.returncode != 0
+
+    def test_install_all_conflicts_with_skill(self) -> None:
+        result = _run_cli("--install-all", "--personal", "--skill", "go-code-review")
+        assert result.returncode != 0
+
+    def test_install_all_conflicts_with_uninstall(self) -> None:
+        result = _run_cli("--install-all", "--personal", "--uninstall")
+        assert result.returncode != 0
+
+    def test_install_all_conflicts_with_reinstall_all(self) -> None:
+        result = _run_cli("--install-all", "--personal", "--reinstall-all")
+        assert result.returncode != 0
+
+    def test_reinstall_all_conflicts_with_install_all(self) -> None:
+        result = _run_cli("--reinstall-all", "--personal", "--install-all")
+        assert result.returncode != 0
+
+    def test_main_install_all_personal_invokes_install_all_skills(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        called: dict[str, object] = {}
+
+        def fake_install_all(*, project: str | None, force: bool) -> None:
+            called["project"] = project
+            called["force"] = force
+
+        monkeypatch.setattr(install_module, "install_all_skills", fake_install_all)
+        monkeypatch.setattr(sys, "argv", ["install.py", "--personal", "--install-all"])
+        install_module.main()
+        assert called == {"project": None, "force": False}
+
+    def test_main_install_all_personal_forwards_force(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        called: dict[str, object] = {}
+
+        def fake_install_all(*, project: str | None, force: bool) -> None:
+            called["project"] = project
+            called["force"] = force
+
+        monkeypatch.setattr(install_module, "install_all_skills", fake_install_all)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["install.py", "--personal", "--install-all", "--force"],
+        )
+        install_module.main()
+        assert called == {"project": None, "force": True}
 
 
 # ---------------------------------------------------------------------------

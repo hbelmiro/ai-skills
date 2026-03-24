@@ -77,6 +77,12 @@ uv run python src/install.py --personal --uninstall --skill go-code-review
 # Force-replace conflicting versions
 STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --personal --force --skill go-code-review
 
+# Install every skill under skills/ (each once, dependency order)
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --personal --install-all
+
+# Same for a specific project
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --project /path/to/my-project --install-all
+
 # Reinstall all tracked skills
 uv run python src/install.py --reinstall-all
 
