@@ -84,7 +84,7 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
 ## Adding New Agents
 
 1. Create a new directory under `skills/`
-2. Follow the structure outlined in `skills/README.md`
+2. Follow the structure outlined in the [root README](README.md#skill-structure)
 3. Add your agent to the registry section above
 4. Include a clear description and usage instructions
 

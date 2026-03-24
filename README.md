@@ -6,7 +6,18 @@ A collection of AI skills and projects organized in a single repository.
 
 - `src/` - Main package source code and shared utilities
 - `skills/` - Individual AI skills and projects
-- `docs/` - Documentation and guides
+
+## Skill Structure
+
+Each skill is an OCI artifact with an `artifact.json` manifest:
+
+```text
+skill-name/
+├── artifact.json      # OCI artifact manifest (name, version, files, dependencies)
+├── SKILL.md           # Entrypoint read by the AI agent
+├── README.md          # Human-readable description (optional)
+└── *.md               # Additional checklist/reference files
+```
 
 ## Getting Started
 
@@ -15,18 +26,6 @@ A collection of AI skills and projects organized in a single repository.
 3. Navigate to the specific skill directory you want to work with
 4. Follow the README instructions in that skill's directory
 
-## Project Structure
-
-The project uses a src layout for shared utilities:
-
-```python
-# Skills can import shared utilities (when run with uv)
-from utils.common import load_config, process_data
-
-# Or with explicit PYTHONPATH
-# PYTHONPATH=../../src python src/main.py
-```
-
 ## Development
 
 - Install all development dependencies: `uv sync --group dev`
@@ -34,9 +33,15 @@ from utils.common import load_config, process_data
 - Run linting: `uv run ruff check .`
 - Run formatting: `uv run ruff format .`
 - Run type checking: `uv run ty check .`
-- Manage skill installs/reinstalls: see `skills/README.md` (`src/install.py`)
+- Manage skill installs/reinstalls via `src/install.py` (see [Installing Skills](#installing-skills))
 
-## Dependency Groups
+Skills can import shared utilities via the src layout (requires `uv run`, or set `PYTHONPATH=../../src`):
+
+```python
+from utils.common import load_config, process_data
+```
+
+### Dependency Groups
 
 - `lint`: Linting and type checking tools (ruff, ty)
 - `test`: Testing tools (empty for now, add pytest, etc. as needed)
@@ -45,16 +50,46 @@ from utils.common import load_config, process_data
 - `git-hooks`: Git hooks and pre-commit tools (pre-commit)
 - `dev`: All development tools (inherits from all groups)
 
+## Installing Skills
+
+### Prerequisites
+
+- [striatum](https://github.com/hbelmiro/striatum) on `PATH`
+- An OCI registry (e.g. `docker run -d -p 5050:5000 registry:2`)
+- `STRIATUM_REGISTRY` env var pointing to the registry base (e.g. `localhost:5050/skills`)
+
+The install script validates, packs, pushes, and installs skills via striatum. Dependencies are resolved from `artifact.json` and pushed in the correct order.
+
+```bash
+# Install for all projects (personal)
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --personal --skill go-code-review
+
+# Install for a specific project
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --project /path/to/my-project --skill kubeflow-pipelines-review
+
+# Uninstall
+uv run python src/install.py --personal --uninstall --skill go-code-review
+
+# Force-replace conflicting versions
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --personal --force --skill go-code-review
+
+# Reinstall all tracked skills
+uv run python src/install.py --reinstall-all
+
+# Reinstall with force
+uv run python src/install.py --reinstall-all --force
+```
+
+Run `uv run python src/install.py --help` for full usage.
+
 ## Adding a New Skill
 
 1. Create a new directory under `skills/`
-2. Add a README.md with project description and setup instructions
-3. Include any necessary configuration files
-4. Update the `AGENTS.md` registry with your new skill
-
-## Skills
-
-<!-- Add links to your skills here as you create them -->
+2. Use lowercase with hyphens for directory names (e.g., `go-code-review`, `python-code-review`)
+3. Add a README.md with project description and setup instructions
+4. Include any necessary configuration files
+5. Update the `AGENTS.md` registry with your new skill
+6. Tag skills by category for discoverability
 
 ## License
 
