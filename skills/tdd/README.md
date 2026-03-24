@@ -9,7 +9,7 @@ Test-driven development workflow for agents: tests and scenario coverage first, 
 
 ## Install
 
-See [skills/README.md](../README.md) for Striatum-based install, e.g.:
+See the [root README](../../README.md#installing-skills) for Striatum-based install, e.g.:
 
 ```bash
 uv run python src/install.py --personal --skill tdd

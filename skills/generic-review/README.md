@@ -16,4 +16,4 @@ Use [`pr-review`](../pr-review/) when the user provides a PR link; that skill co
 
 ## Install
 
-See [skills/README.md](../README.md) for Striatum-based install.
+See the [root README](../../README.md#installing-skills) for Striatum-based install.
