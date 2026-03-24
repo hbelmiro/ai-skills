@@ -26,4 +26,3 @@ Use this skill for Go-only reviews. Apply every checklist item explicitly.
 - Concurrency correctness, goroutine lifecycle safety, and shared-state protection.
 - Logging quality without secret or payload leakage.
 - Failure-path and boundary-condition test coverage.
-

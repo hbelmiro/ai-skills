@@ -18,4 +18,3 @@ Use this skill for repository-level KFP reviews across Go backend, controllers, 
 5. Review cross-component parity (one-off runs vs recurring runs, v1 vs v2 where applicable).
 6. Classify findings with `../review-shared/severity-rubric.md`.
 7. Present results using `../review-shared/output-template.md`.
-

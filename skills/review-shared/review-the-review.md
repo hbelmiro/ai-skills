@@ -1,6 +1,9 @@
 # Review the Review
 
-Re-read your entire review output before presenting it. Apply every check below and fix any issues found in-place. Do not add a separate "meta-review" section to the output — just silently correct the review itself.
+Re-read your entire review output before presenting it.
+Apply every check below and fix any issues found in-place.
+Do not add a separate "meta-review" section to the output;
+just silently correct the review itself.
 
 ## Completeness
 
@@ -15,6 +18,8 @@ Re-read your entire review output before presenting it. Apply every check below 
 - Quoted code snippets match the actual diff content (no stale or hallucinated code).
 - Severity classifications are consistent with the severity rubric.
 - Suggested fixes are syntactically valid and would actually resolve the issue.
+- Major conclusions are backed by specific evidence from code paths,
+  tests, or specs.
 
 ## Consistency
 
@@ -33,3 +38,13 @@ Re-read your entire review output before presenting it. Apply every check below 
 - Findings are based on what the diff actually does, not on assumptions about intent.
 - Positive aspects of the change are acknowledged in the Change Summary when warranted.
 - Tone is constructive and professional throughout.
+
+## Anti-bias discipline
+
+- The review does not rely on author-justification language
+  (for example: "probably intended", "likely safe")
+  without evidence.
+- At least one plausible counterexample or failure mode was checked for
+  each high-impact behavior change.
+- If behavior cannot be verified from available code/tests,
+  uncertainty is called out as an open question.
