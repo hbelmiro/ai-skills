@@ -51,6 +51,7 @@ would be consumed by the markdown parser instead of being reproduced in output.
 - Independent reviewer mode applied: yes/no with brief evidence note
 - Tests and edge cases reviewed: yes/no with notes
 - Do tests cover enough scenarios?: yes/no with notes
+- Broken link check: complete/incomplete
 - Adversarial scenario gaps still open: list or "none"
 
 ## Change Summary
