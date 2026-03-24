@@ -34,3 +34,25 @@ Apply these requirements to every review, regardless of language or component.
 - Probe adversarially: identify at least one
   "what breaks if assumptions are wrong?" scenario and whether a test
   covers it.
+
+## Mandatory Broken Link Check
+
+- For every added or modified file in the diff, verify that **internal
+  cross-references** resolve to an existing target:
+  - Markdown/doc links (`[text](path)`, `[text]: path`) — confirm the
+    target file or heading anchor exists relative to the linking file.
+    For anchor links, use GitHub-style slugification (lowercase, spaces
+    to hyphens, strip punctuation).
+  - Import/include paths — confirm the referenced module, package,
+    or file exists in the tree (already covered by language checklists
+    for compile/runtime imports; this item targets supplementary
+    references such as comments, docs, and build configs).
+- For **renamed, moved, or deleted** files, search the diff and
+  surrounding codebase for references that now point to a stale path.
+- External URLs (https://…) in added or changed lines: flag any that
+  are clearly malformed or point to known-dead domains. Full
+  reachability testing is not required, but obviously broken URLs
+  should be called out.
+- Classify broken-link findings using the severity rubric (typically
+  Medium for documentation links, High when a broken reference would
+  cause a build or runtime failure).
