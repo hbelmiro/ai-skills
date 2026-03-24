@@ -14,6 +14,8 @@ Apply every check explicitly.
 - Fetch and retain the full PR diff with `gh pr diff <url>`.
 - Ensure the diff includes every changed file; pass this full diff to
   `generic-review` for risk analysis and findings.
+- Ensure mandatory full-diff inspection is executed in
+  `generic-review-checklist.md`; do not skip that review step.
 
 ## Comment Resolution Validation
 

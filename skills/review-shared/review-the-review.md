@@ -14,7 +14,7 @@ just silently correct the review itself.
 
 ## Accuracy
 
-- Each finding references the correct file path and line number.
+- Each finding references the correct file path and line number. Re-read the diff to verify every line number points to the exact line described — do not trust line numbers from memory.
 - Quoted code snippets match the actual diff content (no stale or hallucinated code).
 - Severity classifications are consistent with the severity rubric.
 - Suggested fixes are syntactically valid and would actually resolve the issue.
