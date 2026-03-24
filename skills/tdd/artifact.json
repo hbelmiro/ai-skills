@@ -3,11 +3,11 @@
   "kind": "Skill",
   "metadata": {
     "name": "tdd",
-    "version": "999-SNAPSHOT"
+    "version": "0.3.0"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "README.md", "scenario-coverage.md"]
   },
-  "dependencies": [{ "name": "generic-review", "version": "999-SNAPSHOT" }]
+  "dependencies": [{ "name": "generic-review", "version": "0.3.0" }]
 }

@@ -3,16 +3,16 @@
   "kind": "Skill",
   "metadata": {
     "name": "generic-review",
-    "version": "999-SNAPSHOT"
+    "version": "0.3.0"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "README.md", "generic-review-checklist.md"]
   },
   "dependencies": [
-    { "name": "review-shared", "version": "999-SNAPSHOT" },
-    { "name": "kubeflow-pipelines-review", "version": "999-SNAPSHOT" },
-    { "name": "go-code-review", "version": "999-SNAPSHOT" },
-    { "name": "python-code-review", "version": "999-SNAPSHOT" }
+    { "name": "review-shared", "version": "0.3.0" },
+    { "name": "kubeflow-pipelines-review", "version": "0.3.0" },
+    { "name": "go-code-review", "version": "0.3.0" },
+    { "name": "python-code-review", "version": "0.3.0" }
   ]
 }

@@ -3,13 +3,13 @@
   "kind": "Skill",
   "metadata": {
     "name": "python-code-review",
-    "version": "999-SNAPSHOT"
+    "version": "0.3.0"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "python-review-checklist.md"]
   },
   "dependencies": [
-    { "name": "review-shared", "version": "999-SNAPSHOT" }
+    { "name": "review-shared", "version": "0.3.0" }
   ]
 }
