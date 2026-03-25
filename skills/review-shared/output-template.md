@@ -2,6 +2,27 @@
 
 Use this output format for reviews.
 
+## Document order
+
+- **PR-linked reviews** (started from a PR URL via `pr-review`): present sections in this order — **Pull request context** → **GitHub Review Comments** → **Findings not repeated (already in PR discussion)** → **Open Questions** → **Discussion Resolution Check** → **Coverage Check** → **Change Summary**.
+- **Non-PR reviews** (`generic-review` only, no PR URL): **omit** **Pull request context** and **Findings not repeated** entirely.
+
+## Pull request context (PR reviews only)
+
+Place this section **first** in the document (before numbered findings). Reproduce the author’s intent from `gh pr view`; do not bury the PR body at the end of the review.
+
+Include at minimum:
+
+- **Title:** (PR title)
+- **URL / number:** (link or owner/repo#n)
+- **Description (author body):** full PR body as returned by `gh pr view` (preserve structure; use normal markdown)
+- **Base / head:** branch or ref names
+- **Author:** from PR JSON
+
+Optional: changed file count, additions/deletions from PR JSON.
+
+**Non-PR reviews:** omit this entire section.
+
 ## GitHub Review Comments (Ready To Paste)
 
 For each finding, output the metadata fields (File, Line, Severity) as plain
@@ -33,6 +54,12 @@ In the template above, replace BACKTICK with a single backtick character.
 The placeholder is used here only because real backticks inside this template
 would be consumed by the markdown parser instead of being reproduced in output.
 
+## Findings not repeated (already in PR discussion)
+
+**PR reviews only.** Omit this section when not PR-linked or when nothing was suppressed.
+
+For each suppressed finding (same concern already raised on the PR), add one bullet: what was skipped, which prior thread it matches (author, short quote, or permalink if available). If a **new** finding **narrows** or **replaces** a duplicate rather than duplicating it, note that there instead of repeating the issue twice in **GitHub Review Comments**.
+
 ## Open Questions
 
 - \<question where intended behavior is unclear\>
@@ -56,4 +83,4 @@ would be consumed by the markdown parser instead of being reproduced in output.
 
 ## Change Summary
 
-- \<brief summary after findings\>
+The reviewer’s concise read of **what the diff does and whether it hangs together** — **not** a repeat of the PR body (the author description belongs in **Pull request context**).
