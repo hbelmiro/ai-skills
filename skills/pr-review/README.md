@@ -1,6 +1,6 @@
 # PR Review Skill
 
-Review GitHub pull requests from a PR URL using `gh`, with mandatory full-diff review and comment-resolution validation, then the shared [`generic-review`](../generic-review/) pipeline for routing and output.
+Review GitHub pull requests from a PR URL using `gh`, with mandatory full-diff review and comment-resolution validation, then the shared [`generic-review`](../generic-review/) pipeline for routing and output. The written review leads with the PR title and full author description, then drops numbered findings that duplicate existing PR review threads (see `pr-review-checklist.md` Phase 2).
 
 ## Files
 

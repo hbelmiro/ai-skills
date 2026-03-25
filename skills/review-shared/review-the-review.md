@@ -11,6 +11,7 @@ just silently correct the review itself.
 - All checklist sections from the applicable skill(s) were executed; none were silently skipped.
 - The Coverage Check section accurately reflects which checklists were completed.
 - Open Questions are listed when intent is genuinely unclear — not left empty by default.
+- For **PR-linked** reviews: **Pull request context** is present, appears **before** numbered findings, and includes the full PR **body** (not only the title).
 
 ## Accuracy
 
@@ -24,6 +25,7 @@ just silently correct the review itself.
 ## Consistency
 
 - No duplicate findings (same issue reported more than once under different wording).
+- For **PR** reviews where prior comments were collected: findings do not restate issues already raised on the PR unless the prior thread is **stale**, the concern **remains unresolved** in the code, or the new finding is a **distinct** sub-issue. Suppressed overlaps belong under **Findings not repeated** per the output template.
 - No contradictory findings (one comment recommends X, another recommends the opposite).
 - Severity levels are applied uniformly — similar issues carry the same severity.
 

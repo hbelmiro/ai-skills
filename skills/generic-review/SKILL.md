@@ -15,6 +15,8 @@ Use this skill when reviewing changes **without** requiring a pull request linkâ
 
 If you are **continuing immediately after** [`../pr-review/SKILL.md`](../pr-review/SKILL.md), the full diff should already be available from `gh pr diff`. In that case **skip** the diff-acquisition steps in `generic-review-checklist.md` and use that diff and the PR file list.
 
+When the overall task **started with pr-review**, this skillâ€™s step 6 is **not** always the final pass: return to **pr-review** step 4 to run **Phase 2** (suppress findings already raised on the PR) and, if findings changed, apply [`../review-shared/review-the-review.md`](../review-shared/review-the-review.md) again before presenting.
+
 ## Prerequisites
 
 Before the workflow below, you must have:
