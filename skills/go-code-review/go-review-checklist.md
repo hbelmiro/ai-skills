@@ -9,7 +9,7 @@ Apply every check explicitly, even when a change seems unrelated.
 - No `panic` in production paths unless behavior is explicitly fatal.
 - `context.Context` is passed through I/O call chains consistently.
 - Tests use `t.Helper()` for helpers and fail fast on helper failures.
-- Tests prefer `require` for critical assertions and use `assert` selectively.
+- Tests prefer `require` for critical assertions and use `assert` selectively. Follow this rule even when existing code in the file uses `assert` everywhere.
 
 ## Correctness and Reliability
 
