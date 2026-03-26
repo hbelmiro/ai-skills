@@ -33,4 +33,5 @@ Skip this section when the full diff was already obtained (including via `pr-rev
 - Challenge happy-path assumptions by checking at least one adversarial
   scenario ("what breaks if this assumption is wrong?").
 - Explicitly answer: "Do tests cover enough scenarios?"
-- State assumptions and open questions when intent is unclear.
+- After investigating the codebase and tests, state assumptions and list only
+  open questions for which intent is still unclear.

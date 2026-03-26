@@ -62,7 +62,18 @@ For each suppressed finding (same concern already raised on the PR), add one bul
 
 ## Open Questions
 
-- \<question where intended behavior is unclear\>
+Before listing anything here, **try to answer the question yourself** from the
+diff, surrounding code, tests, configs, and (for PR reviews) the PR body or
+linked context. Read call sites, types, and existing tests; search the repo for
+related behavior. **List only questions that remain unanswerable** from what
+you can inspect in the repository and the materials already in scope for the
+review.
+
+In the rendered review, use **one bullet per remaining question**, or **exactly
+one** bullet **None** if investigation resolved every uncertainty (do not mix
+question bullets with **None**).
+
+- \<each question that stays unanswered after that investigation\>
 
 ## Discussion Resolution Check
 

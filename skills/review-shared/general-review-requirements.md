@@ -6,7 +6,8 @@ Apply these requirements to every review, regardless of language or component.
 
 - Do not skip checklist items because files look unrelated.
 - Escalate security, data integrity, compatibility, and reliability risks first.
-- Flag assumptions and open questions when intended behavior is unclear.
+- After reading relevant code and tests, flag assumptions and list **only**
+  remaining open questions when intended behavior is still unclear.
 - Prefer actionable fixes over generic advice.
 - Be assertive: when a fact is verifiable from the code, state it as a fact. Do not hedge with "if" or "consider" when you can confirm the condition by reading the diff or codebase.
 
