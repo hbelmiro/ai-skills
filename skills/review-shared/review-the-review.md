@@ -10,7 +10,11 @@ just silently correct the review itself.
 - Every changed file in the diff is accounted for (reviewed or explicitly noted as no-issue).
 - All checklist sections from the applicable skill(s) were executed; none were silently skipped.
 - The Coverage Check section accurately reflects which checklists were completed.
-- Open Questions are listed when intent is genuinely unclear — not left empty by default.
+- **Open Questions** is always present, but bullets list **only** uncertainties
+  that stay unresolved **after** you searched the codebase, tests, and
+  in-scope context (PR body, etc.). Do not use this section for items you could
+  have settled by reading code. If nothing remains open, state **None**
+  explicitly.
 - For **PR-linked** reviews: **Pull request context** is present, appears **before** numbered findings, and includes the full PR **body** (not only the title).
 
 ## Accuracy
