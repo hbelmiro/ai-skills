@@ -69,10 +69,8 @@ related behavior. **List only questions that remain unanswerable** from what
 you can inspect in the repository and the materials already in scope for the
 review.
 
-In the rendered review, use **one bullet per remaining question**, or **exactly
-one** bullet **None** if investigation resolved every uncertainty (do not mix
-question bullets with **None**).
-
+In the rendered review, use **one bullet per remaining question**, or **exactly one** bullet `- None` if investigation resolved every uncertainty (do not mix
+question bullets with `- None`).
 - \<each question that stays unanswered after that investigation\>
 
 ## Discussion Resolution Check
