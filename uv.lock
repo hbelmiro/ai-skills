@@ -9,7 +9,7 @@ resolution-markers = [
 
 [[package]]
 name = "agentready"
-version = "2.30.1"
+version = "2.31.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "anthropic" },
@@ -27,9 +27,9 @@ dependencies = [
     { name = "requests" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/09/62/27e3c15c0ff03f7a5c52f8006a4c0339890ead87c660dbe5772d5810bc8c/agentready-2.30.1.tar.gz", hash = "sha256:7f685948fa8c045e3f71bfabd5859829254f5b89f9e9a8d7f039d7a71c5deb09", size = 329516, upload-time = "2026-03-09T18:25:27.81Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/94/53/a51b625100690042c3a7642191391f8cc7bad18255eb5befccb512366059/agentready-2.31.1.tar.gz", hash = "sha256:8990f3064fed701bd94c2f98a95544b174ea1e327a5116715a7a9e24c614f562", size = 335261, upload-time = "2026-03-26T03:33:13.51Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ff/6c/31912fdf4b244d4175ad106d88c6eb0be55f886a9c6ff975d041564bcfed/agentready-2.30.1-py3-none-any.whl", hash = "sha256:e26982b2291a5d852a023b53a25b2658215f6068863115ee134aac214016c429", size = 386570, upload-time = "2026-03-09T18:25:26.272Z" },
+    { url = "https://files.pythonhosted.org/packages/7f/56/6ef634152baaa8c6ac85dc1040284b362e063c73cbec3846e3637614c5c1/agentready-2.31.1-py3-none-any.whl", hash = "sha256:0a6eb566f73ebe206d0be6d101a8f4f6aa6c3e042c8f7f3256a4ed79c4f4a6e1", size = 393389, upload-time = "2026-03-26T03:33:11.93Z" },
 ]
 
 [[package]]
