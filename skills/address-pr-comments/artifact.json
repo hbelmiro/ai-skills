@@ -1,0 +1,16 @@
+{
+  "apiVersion": "striatum.dev/v1alpha1",
+  "kind": "Skill",
+  "metadata": {
+    "name": "address-pr-comments",
+    "version": "999-SNAPSHOT"
+  },
+  "spec": {
+    "entrypoint": "SKILL.md",
+    "files": ["SKILL.md", "README.md", "address-pr-comments-checklist.md"]
+  },
+  "dependencies": [
+    { "name": "tdd", "version": "999-SNAPSHOT" },
+    { "name": "pr-review", "version": "999-SNAPSHOT" }
+  ]
+}
