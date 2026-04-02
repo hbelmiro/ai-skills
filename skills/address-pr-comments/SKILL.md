@@ -15,7 +15,10 @@ description: >-
 ## Scope
 
 Use when the user gives a **PR URL** (or clear owner/repo/number) and wants
-review feedback implemented—not a fresh independent review of the diff.
+**existing** review feedback implemented and threads cleared as the **primary**
+goal (not a standalone "review this PR from scratch" request with no feedback to
+act on). A required **fresh-eyes** `generic-review` pass on the current diff
+still runs before the closing summary—see workflow step 7.
 
 ## Git and remotes (hard rule)
 

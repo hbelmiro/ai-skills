@@ -4,10 +4,11 @@ Execute in order unless a step is not applicable (state N/A with reason).
 
 ## 0. Git (hard rule)
 
-- [ ] **Never** `git commit`, `git push`, `commit --amend`, `rebase`, `merge`,
-      `cherry-pick`, `pull` when it would merge/rebase, or anything that creates
-      commits or updates remotes. Read-only git is fine. Edits stay in the
-      working tree; tell the user what to commit or push if needed.
+- [ ] **Never** `git commit`, `git push`, `git commit --amend`, `git rebase`,
+      `git merge`, `git cherry-pick`, `git pull` when it would merge/rebase, or
+      anything that creates commits or updates remotes. Read-only git is fine.
+      Edits stay in the working tree; tell the user what to commit or push if
+      needed.
 
 ## 1. Inputs
 
