@@ -28,6 +28,11 @@ This file tracks AI agents and skills within the monorepo.
 - `tdd` (Development, Active) in `skills/tdd/`
   Test-first workflow with scenario gates, overlap checks, and final
   review/fix loop.
+- `address-pr-comments` (Development, Active) in
+  `skills/address-pr-comments/`
+  Implement PR review feedback from a PR URL (including bot nitpicks),
+  using TDD where applicable, then a fresh `generic-review` fix loop before
+  the closing per-comment summary; does not commit or push.
 
 ## Skill Dependency Graph (`artifact.json`)
 
@@ -43,6 +48,7 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
   `go-code-review`, `python-code-review`
 - `pr-review` -> `generic-review`
 - `tdd` -> `generic-review`
+- `address-pr-comments` -> `tdd`, `pr-review`
 
 ### Dependency Layers
 
@@ -51,6 +57,7 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
 - **Layer 2 (domain orchestration):**
   `kubeflow-pipelines-review`, `generic-review`
 - **Layer 3 (entry workflows):** `pr-review`, `tdd`
+- **Layer 4 (PR fix workflow):** `address-pr-comments`
 
 ### Deduplication Guidance
 
@@ -78,6 +85,12 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
   PR metadata/thread collection only; rely on `generic-review` for findings.
 - `tdd` owns:
   phase sequencing only; rely on `generic-review` for final review behavior.
+- `address-pr-comments` owns:
+  triage and implement review feedback for a PR URL; rely on `pr-review`
+  for thread collection and `tdd` for test-first work when it applies;
+  require a fresh-eyes `generic-review` fix loop on the current git diff
+  before presenting the PR-comment summary; **never** commit or push (user
+  owns git history and remotes).
 - If a rule already exists in an upstream dependency,
   link/reference it instead of repeating the same prose.
 
