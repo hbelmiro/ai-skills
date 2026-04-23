@@ -3,14 +3,14 @@
   "kind": "Skill",
   "metadata": {
     "name": "address-pr-comments",
-    "version": "999-SNAPSHOT"
+    "version": "0.4.0"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "README.md", "address-pr-comments-checklist.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "tdd", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "pr-review", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "tdd", "tag": "0.4.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "pr-review", "tag": "0.4.0" }
   ]
 }
