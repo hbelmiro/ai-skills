@@ -60,34 +60,42 @@ from utils.common import load_config, process_data
 
 The install script validates, packs, pushes, and installs skills via striatum. Dependencies are resolved from `artifact.json` and pushed in the correct order.
 
-**Transitive install:** Installing a skill also runs `striatum skill install` for **each** transitive dependency (dependency order first, then the requested skill). They appear as separate directories under `~/.cursor/skills/` (or `<project>/.cursor/skills/`), which keeps relative paths like `../generic-review/SKILL.md` working.
+**`--target` (required):** Every command must include one or more targets: `--target cursor`, `--target claude`, or `--target cursor claude` to install into both. This is forwarded to striatum’s `--target` flag. Pack and push happen once; the install/uninstall step runs per target.
+
+**Transitive install:** Installing a skill also runs `striatum skill install` for **each** transitive dependency (dependency order first, then the requested skill). They appear as separate sibling directories under the skills root for that target (for example `~/.cursor/skills/` with `--target cursor`), which keeps relative paths like `../generic-review/SKILL.md` working.
 
 **Uninstall:** `--uninstall` removes **only** the named skill. Dependency skills installed alongside it are not removed automatically (they may still be required by other skills). Remove them with additional `--uninstall` invocations if you want a clean tree, or delete the extra directories manually.
 
 ```bash
-# Install for all projects (personal)
-STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --personal --skill go-code-review
+# Install for all projects (personal), Cursor
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --personal --skill go-code-review
+
+# Install for Claude (personal) instead
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target claude --personal --skill go-code-review
+
+# Install for both Cursor and Claude at once
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor claude --personal --skill go-code-review
 
 # Install for a specific project
-STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --project /path/to/my-project --skill kubeflow-pipelines-review
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --project /path/to/my-project --skill kubeflow-pipelines-review
 
 # Uninstall
-uv run python src/install.py --personal --uninstall --skill go-code-review
+uv run python src/install.py --target cursor --personal --uninstall --skill go-code-review
 
 # Force-replace conflicting versions
-STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --personal --force --skill go-code-review
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --personal --force --skill go-code-review
 
 # Install every skill under skills/ (each once, dependency order)
-STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --personal --install-all
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --personal --install-all
 
 # Same for a specific project
-STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --project /path/to/my-project --install-all
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --project /path/to/my-project --install-all
 
 # Reinstall all tracked skills
-uv run python src/install.py --reinstall-all
+uv run python src/install.py --target cursor --reinstall-all
 
 # Reinstall with force
-uv run python src/install.py --reinstall-all --force
+uv run python src/install.py --target cursor --reinstall-all --force
 ```
 
 Run `uv run python src/install.py --help` for full usage.

@@ -104,6 +104,13 @@ def _fake_run_factory() -> tuple[list[list[str]], object]:
     return calls, fake_run
 
 
+def _striatum_target_from_argv(argv: list[str]) -> str:
+    """Return the token after the last ``--target`` in a striatum argv list."""
+    indices = [i for i, a in enumerate(argv) if a == "--target"]
+    assert indices, f"expected --target in argv, got {argv!r}"
+    return argv[indices[-1] + 1]
+
+
 def _is_striatum_skill_install_argv(args: list[str]) -> bool:
     """True if *args* is a ``striatum skill install …`` argv.
 
@@ -167,6 +174,88 @@ class TestValidateSkillName:
     @pytest.mark.parametrize("good_name", ["go-code-review", "a", "skill-1", "a1b"])
     def test_accepts_valid_names(self, good_name: str) -> None:
         _validate_skill_name(good_name)
+
+
+# ---------------------------------------------------------------------------
+# _validate_targets (via public entrypoints)
+# ---------------------------------------------------------------------------
+
+
+class TestValidateTargets:
+    def test_install_skill_rejects_unknown_target(
+        self,
+        skills_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+
+        with pytest.raises(SystemExit):
+            install_skill("my-skill", targets=["vscode"])
+
+        err = capsys.readouterr().err.lower()
+        assert "invalid target" in err
+        assert "vscode" in err
+
+    def test_install_all_skills_rejects_unknown_target(
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        empty = tmp_path / "skills"
+        empty.mkdir()
+        monkeypatch.setattr("install._skills_root", lambda: empty)
+
+        with pytest.raises(SystemExit):
+            install_all_skills(targets=["vscode"])
+
+        assert "invalid target" in capsys.readouterr().err.lower()
+
+    def test_uninstall_skill_rejects_unknown_target(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit):
+            uninstall_skill("my-skill", targets=["vscode"])
+
+        assert "invalid target" in capsys.readouterr().err.lower()
+
+    def test_reinstall_all_rejects_unknown_target(
+        self, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        with pytest.raises(SystemExit):
+            reinstall_all(targets=["vscode"])
+
+        assert "invalid target" in capsys.readouterr().err.lower()
+
+    def test_rejects_when_any_target_invalid(
+        self,
+        skills_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+
+        with pytest.raises(SystemExit):
+            install_skill("my-skill", targets=["cursor", "vscode"])
+
+        err = capsys.readouterr().err.lower()
+        assert "invalid target" in err
+        assert "vscode" in err
+
+    def test_rejects_empty_targets(
+        self,
+        skills_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+
+        with pytest.raises(SystemExit):
+            install_skill("my-skill", targets=[])
 
 
 # ---------------------------------------------------------------------------
@@ -329,8 +418,10 @@ class TestArtifactReading:
                 }
             ),
         )
-        with pytest.raises(SystemExit):
+        with pytest.raises(SystemExit) as exc_info:
             _read_dependencies(skills_root / "bad")
+        assert exc_info.value.__cause__ is not None
+        assert isinstance(exc_info.value.__cause__, TypeError)
 
 
 # ---------------------------------------------------------------------------
@@ -614,13 +705,13 @@ class TestPackAndPush:
                 striatum="/usr/bin/striatum",
             )
 
-    def test_cleans_stale_layout(
+    def test_cleans_stale_build_dir(
         self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         skill_dir = _make_artifact(skills_root, "my-skill")
-        layout = skill_dir / ".striatum"
-        layout.mkdir()
-        (layout / "stale").write_text("old", encoding="utf-8")
+        build_dir = skill_dir / "build"
+        build_dir.mkdir()
+        (build_dir / "stale").write_text("old", encoding="utf-8")
 
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
         monkeypatch.setattr(
@@ -634,14 +725,14 @@ class TestPackAndPush:
             "localhost:5050/skills",
             striatum="/usr/bin/striatum",
         )
-        assert not (layout / "stale").exists()
+        assert not (build_dir / "stale").exists()
 
-    def test_cleans_non_directory_layout(
+    def test_cleans_non_directory_build_path(
         self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         skill_dir = _make_artifact(skills_root, "my-skill")
-        layout = skill_dir / ".striatum"
-        layout.write_text("I am a file", encoding="utf-8")
+        build_dir = skill_dir / "build"
+        build_dir.write_text("I am a file", encoding="utf-8")
 
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
         monkeypatch.setattr(
@@ -655,7 +746,7 @@ class TestPackAndPush:
             "localhost:5050/skills",
             striatum="/usr/bin/striatum",
         )
-        assert not layout.exists()
+        assert not build_dir.exists()
 
     def test_name_mismatch_exits(
         self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
@@ -720,7 +811,7 @@ class TestInstallSkill:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        install_skill("go-review")
+        install_skill("go-review", targets=["cursor"])
 
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 2
@@ -733,6 +824,44 @@ class TestInstallSkill:
         assert "cursor" in install_calls[0]
         assert any("review-shared" in str(arg) for arg in install_calls[0])
         assert any("go-review" in str(arg) for arg in install_calls[1])
+
+    def test_multi_target_packs_once_installs_per_target(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_skill("my-skill", targets=["cursor", "claude"])
+
+        push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
+        assert len(push_calls) == 1
+
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        assert len(install_calls) == 2
+        targets_used = [_striatum_target_from_argv(c) for c in install_calls]
+        assert targets_used == ["cursor", "claude"]
+
+    def test_duplicate_targets_deduplicated(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_skill("my-skill", targets=["cursor", "cursor"])
+
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        assert len(install_calls) == 1
+        assert _striatum_target_from_argv(install_calls[0]) == "cursor"
 
     def test_install_failure_prints_prior_successes(
         self,
@@ -766,7 +895,7 @@ class TestInstallSkill:
         monkeypatch.setattr("install._run", fake_run)
 
         with pytest.raises(SystemExit):
-            install_skill("go-review")
+            install_skill("go-review", targets=["cursor"])
 
         err = capsys.readouterr().err
         assert "successful installs before failure" in err
@@ -783,7 +912,7 @@ class TestInstallSkill:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        install_skill("my-skill", project="/tmp/my-project")
+        install_skill("my-skill", targets=["cursor"], project="/tmp/my-project")
 
         install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
         assert "--project" in install_calls[0]
@@ -800,7 +929,7 @@ class TestInstallSkill:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        install_skill("my-skill", force=True)
+        install_skill("my-skill", targets=["cursor"], force=True)
 
         install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
         assert "--force" in install_calls[0]
@@ -814,13 +943,13 @@ class TestInstallSkill:
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         with pytest.raises(SystemExit):
-            install_skill("my-skill")
+            install_skill("my-skill", targets=["cursor"])
 
     def test_rejects_invalid_skill_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
         with pytest.raises(SystemExit):
-            install_skill("../escape")
+            install_skill("../escape", targets=["cursor"])
 
 
 # ---------------------------------------------------------------------------
@@ -846,7 +975,7 @@ class TestInstallAllSkills:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        install_all_skills()
+        install_all_skills(targets=["cursor"])
 
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 2
@@ -855,6 +984,27 @@ class TestInstallAllSkills:
         assert len(install_calls) == 2
         assert any("review-shared" in str(arg) for arg in install_calls[0])
         assert any("go-review" in str(arg) for arg in install_calls[1])
+
+    def test_multi_target_packs_once_installs_per_target(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_all_skills(targets=["cursor", "claude"])
+
+        push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
+        assert len(push_calls) == 1
+
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        assert len(install_calls) == 2
+        targets_used = [_striatum_target_from_argv(c) for c in install_calls]
+        assert targets_used == ["cursor", "claude"]
 
     def test_empty_skills_no_subprocess_and_no_registry_required(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -867,7 +1017,7 @@ class TestInstallAllSkills:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        install_all_skills()
+        install_all_skills(targets=["cursor"])
 
         assert calls == []
 
@@ -882,7 +1032,7 @@ class TestInstallAllSkills:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        install_all_skills(project="/tmp/my-project", force=True)
+        install_all_skills(targets=["cursor"], project="/tmp/my-project", force=True)
 
         install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
         assert len(install_calls) == 1
@@ -922,7 +1072,7 @@ class TestInstallAllSkills:
         monkeypatch.setattr("install._run", fake_run)
 
         with pytest.raises(SystemExit):
-            install_all_skills()
+            install_all_skills(targets=["cursor"])
 
         err = capsys.readouterr().err
         assert "successful installs before failure" in err
@@ -935,17 +1085,36 @@ class TestInstallAllSkills:
 
 
 class TestUninstallSkill:
-    def test_calls_striatum_uninstall(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize("install_target", ["cursor", "claude"])
+    def test_calls_striatum_uninstall(
+        self, monkeypatch: pytest.MonkeyPatch, install_target: str
+    ) -> None:
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        uninstall_skill("my-skill")
+        uninstall_skill("my-skill", targets=[install_target])
 
         assert len(calls) == 1
         assert "uninstall" in calls[0]
         assert "my-skill" in calls[0]
+        assert _striatum_target_from_argv(calls[0]) == install_target
+
+    def test_multi_target_uninstalls_from_each(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        uninstall_skill("my-skill", targets=["cursor", "claude"])
+
+        uninstall_calls = [c for c in calls if "uninstall" in c]
+        assert len(uninstall_calls) == 2
+        targets_used = [_striatum_target_from_argv(c) for c in uninstall_calls]
+        assert targets_used == ["cursor", "claude"]
 
     def test_project_flag_passed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
@@ -953,7 +1122,7 @@ class TestUninstallSkill:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        uninstall_skill("my-skill", project="/tmp/proj")
+        uninstall_skill("my-skill", targets=["cursor"], project="/tmp/proj")
 
         assert "--project" in calls[0]
         assert "/tmp/proj" in calls[0]
@@ -961,7 +1130,7 @@ class TestUninstallSkill:
     def test_rejects_invalid_skill_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
         with pytest.raises(SystemExit):
-            uninstall_skill("../escape")
+            uninstall_skill("../escape", targets=["cursor"])
 
 
 # ---------------------------------------------------------------------------
@@ -970,18 +1139,35 @@ class TestUninstallSkill:
 
 
 class TestReinstallAll:
-    def test_calls_striatum_reinstall(self, monkeypatch: pytest.MonkeyPatch) -> None:
+    @pytest.mark.parametrize("install_target", ["cursor", "claude"])
+    def test_calls_striatum_reinstall(
+        self, monkeypatch: pytest.MonkeyPatch, install_target: str
+    ) -> None:
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        reinstall_all()
+        reinstall_all(targets=[install_target])
 
         assert len(calls) == 1
         assert "--reinstall-all" in calls[0]
-        assert "--target" in calls[0]
-        assert "cursor" in calls[0]
+        assert _striatum_target_from_argv(calls[0]) == install_target
+
+    def test_multi_target_reinstalls_each(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        reinstall_all(targets=["cursor", "claude"])
+
+        assert len(calls) == 2
+        targets_used = [_striatum_target_from_argv(c) for c in calls]
+        assert targets_used == ["cursor", "claude"]
+        assert all("--reinstall-all" in c for c in calls)
 
     def test_force_flag_passed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
@@ -989,7 +1175,7 @@ class TestReinstallAll:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        reinstall_all(force=True)
+        reinstall_all(targets=["cursor"], force=True)
 
         assert "--force" in calls[0]
 
@@ -1016,45 +1202,84 @@ def _run_cli(
 
 class TestCli:
     def test_personal_and_project_mutually_exclusive(self) -> None:
-        result = _run_cli("--personal", "--project", "/tmp/proj", "--skill", "my-skill")
+        result = _run_cli(
+            "--personal",
+            "--project",
+            "/tmp/proj",
+            "--skill",
+            "my-skill",
+            "--target",
+            "cursor",
+        )
         assert result.returncode != 0
 
+    def test_missing_target_errors(self) -> None:
+        result = _run_cli("--personal", "--skill", "my-skill")
+        assert result.returncode != 0
+        combined = (result.stderr + result.stdout).lower()
+        assert "--target" in combined
+
+    def test_invalid_target_value_rejected(self) -> None:
+        result = _run_cli("--target", "vscode", "--personal", "--skill", "my-skill")
+        assert result.returncode != 0
+        combined = (result.stderr + result.stdout).lower()
+        assert "vscode" in combined
+
     def test_missing_skill_flag_errors(self) -> None:
-        result = _run_cli("--personal")
+        result = _run_cli("--personal", "--target", "cursor")
         assert result.returncode != 0
 
     def test_neither_personal_nor_project_errors(self) -> None:
-        result = _run_cli("--skill", "my-skill")
+        result = _run_cli("--skill", "my-skill", "--target", "cursor")
         assert result.returncode != 0
 
     def test_reinstall_all_conflicts_with_skill_target_flags(self) -> None:
         result = _run_cli(
-            "--reinstall-all", "--skill", "my-skill", "--project", "/tmp/proj"
+            "--reinstall-all",
+            "--target",
+            "cursor",
+            "--skill",
+            "my-skill",
+            "--project",
+            "/tmp/proj",
         )
         assert result.returncode != 0
 
     def test_reinstall_all_conflicts_with_uninstall(self) -> None:
-        result = _run_cli("--reinstall-all", "--uninstall")
+        result = _run_cli("--reinstall-all", "--target", "cursor", "--uninstall")
         assert result.returncode != 0
 
     def test_install_all_requires_target(self) -> None:
-        result = _run_cli("--install-all")
+        result = _run_cli("--install-all", "--target", "cursor")
         assert result.returncode != 0
 
     def test_install_all_conflicts_with_skill(self) -> None:
-        result = _run_cli("--install-all", "--personal", "--skill", "go-code-review")
+        result = _run_cli(
+            "--install-all",
+            "--personal",
+            "--skill",
+            "go-code-review",
+            "--target",
+            "cursor",
+        )
         assert result.returncode != 0
 
     def test_install_all_conflicts_with_uninstall(self) -> None:
-        result = _run_cli("--install-all", "--personal", "--uninstall")
+        result = _run_cli(
+            "--install-all", "--personal", "--uninstall", "--target", "cursor"
+        )
         assert result.returncode != 0
 
     def test_install_all_conflicts_with_reinstall_all(self) -> None:
-        result = _run_cli("--install-all", "--personal", "--reinstall-all")
+        result = _run_cli(
+            "--install-all", "--personal", "--reinstall-all", "--target", "cursor"
+        )
         assert result.returncode != 0
 
     def test_reinstall_all_conflicts_with_install_all(self) -> None:
-        result = _run_cli("--reinstall-all", "--personal", "--install-all")
+        result = _run_cli(
+            "--reinstall-all", "--personal", "--install-all", "--target", "cursor"
+        )
         assert result.returncode != 0
 
     def test_main_install_all_personal_invokes_install_all_skills(
@@ -1062,21 +1287,10 @@ class TestCli:
     ) -> None:
         called: dict[str, object] = {}
 
-        def fake_install_all(*, project: str | None, force: bool) -> None:
-            called["project"] = project
-            called["force"] = force
-
-        monkeypatch.setattr(install_module, "install_all_skills", fake_install_all)
-        monkeypatch.setattr(sys, "argv", ["install.py", "--personal", "--install-all"])
-        install_module.main()
-        assert called == {"project": None, "force": False}
-
-    def test_main_install_all_personal_forwards_force(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
-        called: dict[str, object] = {}
-
-        def fake_install_all(*, project: str | None, force: bool) -> None:
+        def fake_install_all(
+            *, targets: list[str], project: str | None, force: bool
+        ) -> None:
+            called["targets"] = targets
             called["project"] = project
             called["force"] = force
 
@@ -1084,10 +1298,158 @@ class TestCli:
         monkeypatch.setattr(
             sys,
             "argv",
-            ["install.py", "--personal", "--install-all", "--force"],
+            ["install.py", "--personal", "--install-all", "--target", "claude"],
         )
         install_module.main()
-        assert called == {"project": None, "force": True}
+        assert called == {"targets": ["claude"], "project": None, "force": False}
+
+    def test_main_install_all_personal_forwards_force(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        called: dict[str, object] = {}
+
+        def fake_install_all(
+            *, targets: list[str], project: str | None, force: bool
+        ) -> None:
+            called["targets"] = targets
+            called["project"] = project
+            called["force"] = force
+
+        monkeypatch.setattr(install_module, "install_all_skills", fake_install_all)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "install.py",
+                "--personal",
+                "--install-all",
+                "--force",
+                "--target",
+                "cursor",
+            ],
+        )
+        install_module.main()
+        assert called == {"targets": ["cursor"], "project": None, "force": True}
+
+    def test_main_install_skill_forwards_targets(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        called: dict[str, object] = {}
+
+        def fake_install(
+            skill_name: str, *, targets: list[str], project: str | None, force: bool
+        ) -> None:
+            called["skill_name"] = skill_name
+            called["targets"] = targets
+            called["project"] = project
+            called["force"] = force
+
+        monkeypatch.setattr(install_module, "install_skill", fake_install)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["install.py", "--personal", "--skill", "my-skill", "--target", "claude"],
+        )
+        install_module.main()
+        assert called == {
+            "skill_name": "my-skill",
+            "targets": ["claude"],
+            "project": None,
+            "force": False,
+        }
+
+    def test_main_install_skill_forwards_multiple_targets(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        called: dict[str, object] = {}
+
+        def fake_install(
+            skill_name: str, *, targets: list[str], project: str | None, force: bool
+        ) -> None:
+            called["skill_name"] = skill_name
+            called["targets"] = targets
+            called["project"] = project
+            called["force"] = force
+
+        monkeypatch.setattr(install_module, "install_skill", fake_install)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "install.py",
+                "--personal",
+                "--skill",
+                "my-skill",
+                "--target",
+                "cursor",
+                "claude",
+            ],
+        )
+        install_module.main()
+        assert called == {
+            "skill_name": "my-skill",
+            "targets": ["cursor", "claude"],
+            "project": None,
+            "force": False,
+        }
+
+    def test_main_uninstall_skill_forwards_targets(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        called: dict[str, object] = {}
+
+        def fake_uninstall(
+            skill_name: str, *, targets: list[str], project: str | None
+        ) -> None:
+            called["skill_name"] = skill_name
+            called["targets"] = targets
+            called["project"] = project
+
+        monkeypatch.setattr(install_module, "uninstall_skill", fake_uninstall)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "install.py",
+                "--personal",
+                "--skill",
+                "my-skill",
+                "--uninstall",
+                "--target",
+                "cursor",
+                "claude",
+            ],
+        )
+        install_module.main()
+        assert called == {
+            "skill_name": "my-skill",
+            "targets": ["cursor", "claude"],
+            "project": None,
+        }
+
+    def test_main_reinstall_all_forwards_targets(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        called: dict[str, object] = {}
+
+        def fake_reinstall(*, targets: list[str], force: bool) -> None:
+            called["targets"] = targets
+            called["force"] = force
+
+        monkeypatch.setattr(install_module, "reinstall_all", fake_reinstall)
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            ["install.py", "--reinstall-all", "--target", "cursor", "claude"],
+        )
+        install_module.main()
+        assert called == {"targets": ["cursor", "claude"], "force": False}
+
+    def test_cli_accepts_multiple_targets(self) -> None:
+        result = _run_cli(
+            "--target", "cursor", "claude", "--personal", "--skill", "my-skill"
+        )
+        assert result.returncode != 2
 
 
 # ---------------------------------------------------------------------------
@@ -1108,10 +1470,12 @@ class TestSmoke:
         if not reg:
             pytest.skip("STRIATUM_REGISTRY not set")
 
-    def test_install_and_uninstall_via_cli(self, tmp_path: Path) -> None:
+    @pytest.mark.parametrize("install_target", ["cursor", "claude"])
+    def test_install_and_uninstall_via_cli(
+        self, tmp_path: Path, install_target: str
+    ) -> None:
         project_dir = tmp_path / "project"
         project_dir.mkdir()
-        target_dir = project_dir / ".cursor" / "skills"
 
         env = dict(os.environ)
 
@@ -1121,13 +1485,17 @@ class TestSmoke:
             "--project",
             str(project_dir),
             "--force",
+            "--target",
+            install_target,
             env=env,
         )
         assert result.returncode == 0, result.stderr
 
-        assert (target_dir / "go-code-review").is_dir()
-        assert (target_dir / "go-code-review" / "SKILL.md").is_file()
-        assert (target_dir / "review-shared").is_dir()
+        if install_target == "cursor":
+            target_dir = project_dir / ".cursor" / "skills"
+            assert (target_dir / "go-code-review").is_dir()
+            assert (target_dir / "go-code-review" / "SKILL.md").is_file()
+            assert (target_dir / "review-shared").is_dir()
 
         result = _run_cli(
             "--skill",
@@ -1135,7 +1503,11 @@ class TestSmoke:
             "--project",
             str(project_dir),
             "--uninstall",
+            "--target",
+            install_target,
             env=env,
         )
         assert result.returncode == 0, result.stderr
-        assert not (target_dir / "go-code-review").exists()
+
+        if install_target == "cursor":
+            assert not (target_dir / "go-code-review").exists()
