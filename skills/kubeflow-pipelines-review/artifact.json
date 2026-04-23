@@ -1,5 +1,5 @@
 {
-  "apiVersion": "striatum.dev/v1alpha1",
+  "apiVersion": "striatum.dev/v1alpha2",
   "kind": "Skill",
   "metadata": {
     "name": "kubeflow-pipelines-review",
@@ -10,7 +10,7 @@
     "files": ["SKILL.md", "kfp-review-checklist.md"]
   },
   "dependencies": [
-    { "name": "go-code-review", "version": "999-SNAPSHOT" },
-    { "name": "python-code-review", "version": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "999-SNAPSHOT" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "python-code-review", "tag": "999-SNAPSHOT" }
   ]
 }

@@ -32,6 +32,16 @@ from install import (
 
 # Synthetic artifacts in this module use the same dev version as skills on main.
 DEFAULT_SKILL_VERSION = "999-SNAPSHOT"
+_DEFAULT_REGISTRY = "quay.io/hbelmiro"
+
+
+def _oci_dep(
+    name: str,
+    version: str = DEFAULT_SKILL_VERSION,
+    registry: str = _DEFAULT_REGISTRY,
+) -> dict[str, str]:
+    """Build a v1alpha2 OCI dependency dict for test fixtures."""
+    return {"source": "oci", "registry": registry, "repository": name, "tag": version}
 
 
 # ---------------------------------------------------------------------------
@@ -53,7 +63,7 @@ def _make_artifact(
         (skill_dir / "artifact.json").write_text(raw_json, encoding="utf-8")
     else:
         artifact: dict[str, object] = {
-            "apiVersion": "striatum.dev/v1alpha1",
+            "apiVersion": "striatum.dev/v1alpha2",
             "kind": "Skill",
             "metadata": {"name": name, "version": version},
             "spec": {"entrypoint": "SKILL.md", "files": ["SKILL.md"]},
@@ -177,10 +187,10 @@ class TestArtifactReading:
         _make_artifact(
             skills_root,
             "my-skill",
-            dependencies=[{"name": "dep-a", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("dep-a")],
         )
         deps = _read_dependencies(skills_root / "my-skill")
-        assert deps == [{"name": "dep-a", "version": DEFAULT_SKILL_VERSION}]
+        assert deps == [_oci_dep("dep-a")]
 
     def test_read_dependencies_absent(self, skills_root: Path) -> None:
         _make_artifact(skills_root, "my-skill")
@@ -228,14 +238,80 @@ class TestArtifactReading:
         with pytest.raises(SystemExit):
             _read_dependencies(skills_root / "bad")
 
-    def test_read_dependencies_missing_name_key(self, skills_root: Path) -> None:
+    def test_read_dependencies_missing_repository_key(self, skills_root: Path) -> None:
         _make_artifact(
             skills_root,
             "bad",
             raw_json=json.dumps(
                 {
                     "metadata": {"name": "bad", "version": DEFAULT_SKILL_VERSION},
-                    "dependencies": [{"version": DEFAULT_SKILL_VERSION}],
+                    "dependencies": [
+                        {
+                            "source": "oci",
+                            "registry": _DEFAULT_REGISTRY,
+                            "tag": DEFAULT_SKILL_VERSION,
+                        }
+                    ],
+                }
+            ),
+        )
+        with pytest.raises(SystemExit):
+            _read_dependencies(skills_root / "bad")
+
+    def test_read_dependencies_missing_tag_key(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "bad",
+            raw_json=json.dumps(
+                {
+                    "metadata": {"name": "bad", "version": DEFAULT_SKILL_VERSION},
+                    "dependencies": [
+                        {
+                            "source": "oci",
+                            "registry": _DEFAULT_REGISTRY,
+                            "repository": "dep-a",
+                        }
+                    ],
+                }
+            ),
+        )
+        with pytest.raises(SystemExit):
+            _read_dependencies(skills_root / "bad")
+
+    def test_read_dependencies_missing_source_key(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "bad",
+            raw_json=json.dumps(
+                {
+                    "metadata": {"name": "bad", "version": DEFAULT_SKILL_VERSION},
+                    "dependencies": [
+                        {
+                            "registry": _DEFAULT_REGISTRY,
+                            "repository": "dep-a",
+                            "tag": DEFAULT_SKILL_VERSION,
+                        }
+                    ],
+                }
+            ),
+        )
+        with pytest.raises(SystemExit):
+            _read_dependencies(skills_root / "bad")
+
+    def test_read_dependencies_unsupported_source(self, skills_root: Path) -> None:
+        _make_artifact(
+            skills_root,
+            "bad",
+            raw_json=json.dumps(
+                {
+                    "metadata": {"name": "bad", "version": DEFAULT_SKILL_VERSION},
+                    "dependencies": [
+                        {
+                            "source": "git",
+                            "url": "https://example.com/repo.git",
+                            "ref": "main",
+                        }
+                    ],
                 }
             ),
         )
@@ -288,7 +364,7 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "child",
-            dependencies=[{"name": "base", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("base")],
         )
         result = _resolve_all_deps("child", skills_root)
         assert result == ["base", "child"]
@@ -298,19 +374,19 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "go-code-review",
-            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("review-shared")],
         )
         _make_artifact(
             skills_root,
             "python-code-review",
-            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("review-shared")],
         )
         _make_artifact(
             skills_root,
             "kfp-review",
             dependencies=[
-                {"name": "go-code-review", "version": DEFAULT_SKILL_VERSION},
-                {"name": "python-code-review", "version": DEFAULT_SKILL_VERSION},
+                _oci_dep("go-code-review"),
+                _oci_dep("python-code-review"),
             ],
         )
         result = _resolve_all_deps("kfp-review", skills_root)
@@ -325,19 +401,19 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "a",
-            dependencies=[{"name": "shared", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("shared")],
         )
         _make_artifact(
             skills_root,
             "b",
-            dependencies=[{"name": "shared", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("shared")],
         )
         _make_artifact(
             skills_root,
             "root",
             dependencies=[
-                {"name": "a", "version": DEFAULT_SKILL_VERSION},
-                {"name": "b", "version": DEFAULT_SKILL_VERSION},
+                _oci_dep("a"),
+                _oci_dep("b"),
             ],
         )
         result = _resolve_all_deps("root", skills_root)
@@ -347,12 +423,12 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "a",
-            dependencies=[{"name": "b", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("b")],
         )
         _make_artifact(
             skills_root,
             "b",
-            dependencies=[{"name": "a", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("a")],
         )
         with pytest.raises(SystemExit):
             _resolve_all_deps("a", skills_root)
@@ -361,7 +437,7 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "self-ref",
-            dependencies=[{"name": "self-ref", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("self-ref")],
         )
         with pytest.raises(SystemExit):
             _resolve_all_deps("self-ref", skills_root)
@@ -371,7 +447,7 @@ class TestResolveAllDeps:
         _make_artifact(
             skills_root,
             "root",
-            dependencies=[{"name": "dep", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("dep")],
         )
         with pytest.raises(SystemExit):
             _resolve_all_deps("root", skills_root)
@@ -384,7 +460,7 @@ class TestResolveAllDeps:
                 {
                     "metadata": {"name": "root", "version": DEFAULT_SKILL_VERSION},
                     "dependencies": [
-                        {"name": "../escape", "version": DEFAULT_SKILL_VERSION}
+                        _oci_dep("../escape"),
                     ],
                 }
             ),
@@ -410,7 +486,7 @@ class TestGlobalInstallOrder:
         _make_artifact(
             skills_root,
             "child",
-            dependencies=[{"name": "base", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("base")],
         )
         order = _global_install_order(skills_root)
         assert order == ["base", "child"]
@@ -422,19 +498,19 @@ class TestGlobalInstallOrder:
         _make_artifact(
             skills_root,
             "consumer-a",
-            dependencies=[{"name": "shared", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("shared")],
         )
         _make_artifact(
             skills_root,
             "consumer-b",
-            dependencies=[{"name": "shared", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("shared")],
         )
         _make_artifact(
             skills_root,
             "root",
             dependencies=[
-                {"name": "consumer-a", "version": DEFAULT_SKILL_VERSION},
-                {"name": "consumer-b", "version": DEFAULT_SKILL_VERSION},
+                _oci_dep("consumer-a"),
+                _oci_dep("consumer-b"),
             ],
         )
         order = _global_install_order(skills_root)
@@ -449,12 +525,12 @@ class TestGlobalInstallOrder:
         _make_artifact(
             skills_root,
             "a",
-            dependencies=[{"name": "b", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("b")],
         )
         _make_artifact(
             skills_root,
             "b",
-            dependencies=[{"name": "a", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("a")],
         )
         with pytest.raises(SystemExit):
             _global_install_order(skills_root)
@@ -463,7 +539,7 @@ class TestGlobalInstallOrder:
         _make_artifact(
             skills_root,
             "self-ref",
-            dependencies=[{"name": "self-ref", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("self-ref")],
         )
         with pytest.raises(SystemExit):
             _global_install_order(skills_root)
@@ -473,7 +549,7 @@ class TestGlobalInstallOrder:
         _make_artifact(
             skills_root,
             "root",
-            dependencies=[{"name": "dep", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("dep")],
         )
         with pytest.raises(SystemExit):
             _global_install_order(skills_root)
@@ -634,7 +710,7 @@ class TestInstallSkill:
         _make_artifact(
             skills_root,
             "go-review",
-            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("review-shared")],
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
@@ -668,7 +744,7 @@ class TestInstallSkill:
         _make_artifact(
             skills_root,
             "go-review",
-            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("review-shared")],
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
@@ -760,7 +836,7 @@ class TestInstallAllSkills:
         _make_artifact(
             skills_root,
             "go-review",
-            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("review-shared")],
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
@@ -824,7 +900,7 @@ class TestInstallAllSkills:
         _make_artifact(
             skills_root,
             "go-review",
-            dependencies=[{"name": "review-shared", "version": DEFAULT_SKILL_VERSION}],
+            dependencies=[_oci_dep("review-shared")],
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")

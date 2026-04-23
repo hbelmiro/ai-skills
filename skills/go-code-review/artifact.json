@@ -1,5 +1,5 @@
 {
-  "apiVersion": "striatum.dev/v1alpha1",
+  "apiVersion": "striatum.dev/v1alpha2",
   "kind": "Skill",
   "metadata": {
     "name": "go-code-review",
@@ -10,6 +10,6 @@
     "files": ["SKILL.md", "go-review-checklist.md"]
   },
   "dependencies": [
-    { "name": "review-shared", "version": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "999-SNAPSHOT" }
   ]
 }
