@@ -101,6 +101,13 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
 3. Add your agent to the registry section above
 4. Include a clear description and usage instructions
 
+## Code Quality Rules
+
+- **Never suppress `ty` diagnostics.** Do not use `# ty: ignore[...]` or
+  `# type: ignore[...]` comments to silence type-checking errors. Fix the
+  underlying type issue instead (e.g. use explicit narrowing helpers like
+  `_as_json_object` to convert untyped data to properly-typed structures).
+
 ## Agent Guidelines
 
 - **Self-contained**: Each agent should be modular and portable, and may

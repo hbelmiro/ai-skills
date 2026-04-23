@@ -1,4 +1,4 @@
-"""Skill installer for Cursor — packs and installs skills via striatum."""
+"""Skill installer — packs and installs skills via striatum (Cursor or Claude)."""
 
 from __future__ import annotations
 
@@ -9,12 +9,15 @@ import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Sequence
 from pathlib import Path
 
 _SKILLS_DIR_NAME = "skills"
 _ARTIFACT_JSON = "artifact.json"
-_STRIATUM_LAYOUT_DIR = ".striatum"
+_STRIATUM_BUILD_DIR = "build"
 _SKILL_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
+# Values passed to striatum ``skill install|uninstall --target …``.
+STRIATUM_INSTALL_TARGETS = ("cursor", "claude")
 
 
 def _find_striatum() -> str:
@@ -63,6 +66,26 @@ def _validate_skill_name(name: str) -> None:
         raise SystemExit(1)
 
 
+def _validate_targets(targets: Sequence[str]) -> None:
+    """Reject empty lists or values not in ``STRIATUM_INSTALL_TARGETS``."""
+    if not targets:
+        print("error: at least one --target is required", file=sys.stderr)
+        raise SystemExit(1)
+    allowed = ", ".join(STRIATUM_INSTALL_TARGETS)
+    for target in targets:
+        if target not in STRIATUM_INSTALL_TARGETS:
+            print(
+                f"error: invalid target {target!r}: must be one of {allowed}",
+                file=sys.stderr,
+            )
+            raise SystemExit(1)
+
+
+def _dedupe_targets(targets: Sequence[str]) -> list[str]:
+    """Deduplicate *targets* while preserving order."""
+    return list(dict.fromkeys(targets))
+
+
 def _run(
     args: list[str], *, cwd: Path | None = None
 ) -> subprocess.CompletedProcess[str]:
@@ -97,10 +120,23 @@ def _load_artifact(skill_dir: Path) -> dict[str, object]:
             raise SystemExit(1) from exc
 
 
+def _as_json_object(value: object, *, label: str) -> dict[str, object]:
+    """Narrow *value* to ``dict[str, object]``, or raise TypeError."""
+    if not isinstance(value, dict):
+        raise TypeError(f"{label} must be a JSON object")
+    result: dict[str, object] = {}
+    for key, val in value.items():
+        if not isinstance(key, str):
+            raise TypeError(f"{label} keys must be strings")
+        result[key] = val
+    return result
+
+
 def _read_artifact_version(skill_dir: Path) -> str:
     data = _load_artifact(skill_dir)
     try:
-        return str(data["metadata"]["version"])  # type: ignore[index]  # ty: ignore[not-subscriptable]
+        metadata = _as_json_object(data["metadata"], label="metadata")
+        return str(metadata["version"])
     except (KeyError, TypeError) as exc:
         print(f"error: invalid artifact.json in {skill_dir}: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
@@ -109,7 +145,8 @@ def _read_artifact_version(skill_dir: Path) -> str:
 def _read_artifact_name(skill_dir: Path) -> str:
     data = _load_artifact(skill_dir)
     try:
-        return str(data["metadata"]["name"])  # type: ignore[index]  # ty: ignore[not-subscriptable]
+        metadata = _as_json_object(data["metadata"], label="metadata")
+        return str(metadata["name"])
     except (KeyError, TypeError) as exc:
         print(f"error: invalid artifact.json in {skill_dir}: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
@@ -130,16 +167,17 @@ def _read_dependencies(skill_dir: Path) -> list[dict[str, str]]:
         )
         raise SystemExit(1)
     artifact_path = skill_dir / _ARTIFACT_JSON
-    for i, dep in enumerate(raw):
-        if not isinstance(dep, dict):
-            cause = TypeError(f"expected a dict, got {type(dep).__name__}")
+    result: list[dict[str, str]] = []
+    for i, item in enumerate(raw):
+        try:
+            dep = _as_json_object(item, label=f"dependency [{i}]")
+        except TypeError as exc:
             print(
-                f"error: dependency [{i}] in {artifact_path} "
-                f"must be an object: {cause}",
+                f"error: dependency [{i}] in {artifact_path} must be an object: {exc}",
                 file=sys.stderr,
             )
-            raise SystemExit(1) from cause
-        source = dep.get("source")  # ty: ignore[invalid-argument-type]
+            raise SystemExit(1) from exc
+        source = dep.get("source")
         if source != "oci":
             print(
                 f"error: dependency [{i}] in {artifact_path} "
@@ -155,7 +193,8 @@ def _read_dependencies(skill_dir: Path) -> list[dict[str, str]]:
                     file=sys.stderr,
                 )
                 raise SystemExit(1)
-    return raw  # type: ignore[return-value]  # ty: ignore[invalid-return-type]
+        result.append({k: str(v) for k, v in dep.items()})
+    return result
 
 
 def _available_skills(skills_root: Path) -> list[str]:
@@ -174,14 +213,14 @@ def _ordered_skills_postorder(roots: list[str], skills_root: Path) -> list[str]:
     visited: set[str] = set()
     in_progress: set[str] = set()
 
-    def _walk(name: str) -> None:
-        if name in visited:
+    def _walk(skill: str) -> None:
+        if skill in visited:
             return
-        if name in in_progress:
-            print(f"error: dependency cycle detected: {name}", file=sys.stderr)
+        if skill in in_progress:
+            print(f"error: dependency cycle detected: {skill}", file=sys.stderr)
             raise SystemExit(1)
-        in_progress.add(name)
-        skill_dir = skills_root / name
+        in_progress.add(skill)
+        skill_dir = skills_root / skill
         for dep in _read_dependencies(skill_dir):
             dep_name = dep["repository"]
             _validate_skill_name(dep_name)
@@ -190,18 +229,18 @@ def _ordered_skills_postorder(roots: list[str], skills_root: Path) -> list[str]:
             declared_version = dep["tag"]
             if actual_version != declared_version:
                 print(
-                    f"error: {name} declares dependency {dep_name}:{declared_version} "
+                    f"error: {skill} declares dependency {dep_name}:{declared_version} "
                     f"but local artifact has version {actual_version}",
                     file=sys.stderr,
                 )
                 raise SystemExit(1)
             _walk(dep_name)
-        in_progress.discard(name)
-        visited.add(name)
-        ordered.append(name)
+        in_progress.discard(skill)
+        visited.add(skill)
+        ordered.append(skill)
 
-    for name in roots:
-        _walk(name)
+    for root in roots:
+        _walk(root)
     return ordered
 
 
@@ -240,11 +279,11 @@ def pack_and_push(
         raise SystemExit(1)
     ref = _reference(registry, name, version)
 
-    layout_dir = skill_dir / _STRIATUM_LAYOUT_DIR
-    if layout_dir.is_symlink() or (layout_dir.exists() and not layout_dir.is_dir()):
-        layout_dir.unlink()
-    elif layout_dir.is_dir():
-        shutil.rmtree(layout_dir)
+    build_dir = skill_dir / _STRIATUM_BUILD_DIR
+    if build_dir.is_symlink() or (build_dir.exists() and not build_dir.is_dir()):
+        build_dir.unlink()
+    elif build_dir.is_dir():
+        shutil.rmtree(build_dir)
 
     _run([striatum, "validate"], cwd=skill_dir)
     _run([striatum, "pack"], cwd=skill_dir)
@@ -269,6 +308,7 @@ def _install_ordered_skills(
     registry: str,
     *,
     striatum: str,
+    install_target: str,
     project: str | None = None,
     force: bool = False,
 ) -> None:
@@ -280,7 +320,7 @@ def _install_ordered_skills(
         artifact_name = _read_artifact_name(skill_dir)
         ref = _reference(registry, artifact_name, version)
 
-        cmd = [striatum, "skill", "install", "--target", "cursor", ref]
+        cmd = [striatum, "skill", "install", "--target", install_target, ref]
         if project:
             cmd.extend(["--project", str(project)])
         if force:
@@ -304,16 +344,21 @@ def _install_ordered_skills(
 def install_skill(
     skill_name: str,
     *,
+    targets: Sequence[str],
     project: str | None = None,
     force: bool = False,
 ) -> None:
     """Pack, push, and install a skill and all its transitive dependencies.
 
-    Each dependency is installed as its own Cursor skill (sibling directories
-    under ``.cursor/skills/``). ``uninstall_skill`` removes only the named
-    skill; see the root README *Installing Skills* for uninstall notes.
+    Each dependency is installed as its own skill for every *target* (sibling
+    directories under the layout striatum uses for that install target).
+    Pack+push runs once; striatum install runs per target.
+    ``uninstall_skill`` removes only the named skill; see the root README
+    *Installing Skills* for uninstall notes.
     """
     _validate_skill_name(skill_name)
+    _validate_targets(targets)
+    unique_targets = _dedupe_targets(targets)
     skills_root = _skills_root()
     registry = _registry()
     striatum = _find_striatum()
@@ -321,22 +366,27 @@ def install_skill(
     all_skills = _resolve_all_deps(skill_name, skills_root)
 
     _pack_push_ordered(all_skills, skills_root, registry, striatum=striatum)
-    _install_ordered_skills(
-        all_skills,
-        skills_root,
-        registry,
-        striatum=striatum,
-        project=project,
-        force=force,
-    )
+    for t in unique_targets:
+        _install_ordered_skills(
+            all_skills,
+            skills_root,
+            registry,
+            striatum=striatum,
+            install_target=t,
+            project=project,
+            force=force,
+        )
 
 
 def install_all_skills(
     *,
+    targets: Sequence[str],
     project: str | None = None,
     force: bool = False,
 ) -> None:
     """Pack, push, and install every skill under ``skills/`` (each once, dependency order)."""
+    _validate_targets(targets)
+    unique_targets = _dedupe_targets(targets)
     skills_root = _skills_root()
     order = _global_install_order(skills_root)
     if not order:
@@ -346,60 +396,87 @@ def install_all_skills(
     striatum = _find_striatum()
 
     _pack_push_ordered(order, skills_root, registry, striatum=striatum)
-    _install_ordered_skills(
-        order,
-        skills_root,
-        registry,
-        striatum=striatum,
-        project=project,
-        force=force,
-    )
+    for t in unique_targets:
+        _install_ordered_skills(
+            order,
+            skills_root,
+            registry,
+            striatum=striatum,
+            install_target=t,
+            project=project,
+            force=force,
+        )
 
 
 def uninstall_skill(
     skill_name: str,
     *,
+    targets: Sequence[str],
     project: str | None = None,
 ) -> None:
-    """Uninstall one skill via striatum.
+    """Uninstall one skill via striatum from each *target*.
 
     Does not remove other skills that were installed as transitive
     dependencies of this skill. Uninstall those separately if needed.
     """
     _validate_skill_name(skill_name)
+    _validate_targets(targets)
+    unique_targets = _dedupe_targets(targets)
     striatum = _find_striatum()
 
-    cmd = [striatum, "skill", "uninstall", "--target", "cursor", skill_name]
-    if project:
-        cmd.extend(["--project", str(project)])
+    for t in unique_targets:
+        cmd = [striatum, "skill", "uninstall", "--target", t, skill_name]
+        if project:
+            cmd.extend(["--project", str(project)])
+        _run(cmd)
+        print(f"uninstalled {skill_name} from {t}", file=sys.stderr)
 
-    _run(cmd)
-    print(f"uninstalled {skill_name}", file=sys.stderr)
 
-
-def reinstall_all(*, force: bool = False) -> None:
-    """Reinstall all tracked skills via striatum."""
+def reinstall_all(*, targets: Sequence[str], force: bool = False) -> None:
+    """Reinstall all tracked skills via striatum for each *target*."""
+    _validate_targets(targets)
+    unique_targets = _dedupe_targets(targets)
     striatum = _find_striatum()
-    cmd = [striatum, "skill", "install", "--reinstall-all", "--target", "cursor"]
-    if force:
-        cmd.append("--force")
-    _run(cmd)
+    for t in unique_targets:
+        cmd = [striatum, "skill", "install", "--reinstall-all", "--target", t]
+        if force:
+            cmd.append("--force")
+        _run(cmd)
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Pack, push, and install Cursor skills via striatum and an OCI registry.",
+        description=(
+            "Pack, push, and install skills via striatum and an OCI registry "
+            "(Cursor or Claude)."
+        ),
     )
     parser.add_argument("--skill", help="Name of the skill to install/uninstall")
+    parser.add_argument(
+        "--target",
+        required=True,
+        nargs="+",
+        choices=STRIATUM_INSTALL_TARGETS,
+        help="Striatum install target(s) (passed through to striatum --target)",
+    )
 
     target_group = parser.add_mutually_exclusive_group(required=False)
     target_group.add_argument(
         "--personal",
         action="store_true",
-        help="Install to ~/.cursor/skills/ (all projects)",
+        help=(
+            "Install to personal skills dir for the chosen --target "
+            "(e.g. ~/.cursor/skills/ or Claude equivalent; all projects)"
+        ),
     )
     target_group.add_argument(
-        "--project", type=str, metavar="PATH", help="Install to <PATH>/.cursor/skills/"
+        "--project",
+        type=str,
+        metavar="PATH",
+        help=(
+            "Install to project-local skills dir for the chosen --target "
+            "(e.g. <PATH>/.cursor/skills/ or Claude equivalent)"
+        ),
     )
 
     parser.add_argument(
@@ -468,7 +545,7 @@ def main() -> None:
     _validate_cli_args(args, parser)
 
     if args.reinstall_all:
-        reinstall_all(force=args.force)
+        reinstall_all(targets=args.target, force=args.force)
         return
 
     project_path = (
@@ -478,17 +555,19 @@ def main() -> None:
     )
 
     if args.install_all:
-        install_all_skills(project=project_path, force=args.force)
+        install_all_skills(targets=args.target, project=project_path, force=args.force)
         return
 
     if args.uninstall:
         uninstall_skill(
             args.skill,
+            targets=args.target,
             project=project_path,
         )
     else:
         install_skill(
             args.skill,
+            targets=args.target,
             project=project_path,
             force=args.force,
         )

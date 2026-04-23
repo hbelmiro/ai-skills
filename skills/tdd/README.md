@@ -1,6 +1,6 @@
 # tdd
 
-Test-driven development workflow for agents: tests and scenario coverage first, implementation second, post-implementation scenario pass, refactor, overlap pruning, post-overlap scenario audit (F↔G until settled), then **review/fix loop last** (Phase H) using [`generic-review`](../generic-review/).
+Test-driven development workflow for agents: tests and scenario coverage first, implementation second, post-implementation scenario pass, refactor, overlap pruning, post-overlap scenario audit (F↔G until settled), then **review/fix loop last** (Phase H) using [`generic-review`](../generic-review).
 
 ## Contents
 
@@ -12,7 +12,7 @@ Test-driven development workflow for agents: tests and scenario coverage first, 
 See the [root README](../../README.md#installing-skills) for Striatum-based install, e.g.:
 
 ```bash
-uv run python src/install.py --personal --skill tdd
+uv run python src/install.py --target cursor --personal --skill tdd
 ```
 
 (Requires registry/env setup as documented there.)
