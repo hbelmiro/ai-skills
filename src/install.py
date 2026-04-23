@@ -100,7 +100,7 @@ def _load_artifact(skill_dir: Path) -> dict[str, object]:
 def _read_artifact_version(skill_dir: Path) -> str:
     data = _load_artifact(skill_dir)
     try:
-        return str(data["metadata"]["version"])  # type: ignore[index]
+        return str(data["metadata"]["version"])  # type: ignore[index]  # ty: ignore[not-subscriptable]
     except (KeyError, TypeError) as exc:
         print(f"error: invalid artifact.json in {skill_dir}: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
@@ -109,13 +109,18 @@ def _read_artifact_version(skill_dir: Path) -> str:
 def _read_artifact_name(skill_dir: Path) -> str:
     data = _load_artifact(skill_dir)
     try:
-        return str(data["metadata"]["name"])  # type: ignore[index]
+        return str(data["metadata"]["name"])  # type: ignore[index]  # ty: ignore[not-subscriptable]
     except (KeyError, TypeError) as exc:
         print(f"error: invalid artifact.json in {skill_dir}: {exc}", file=sys.stderr)
         raise SystemExit(1) from exc
 
 
 def _read_dependencies(skill_dir: Path) -> list[dict[str, str]]:
+    """Parse v1alpha2 OCI dependencies from artifact.json.
+
+    Each dependency must have ``source == "oci"``, ``registry``,
+    ``repository``, and ``tag``.
+    """
     data = _load_artifact(skill_dir)
     raw = data.get("dependencies", [])
     if not isinstance(raw, list):
@@ -124,15 +129,33 @@ def _read_dependencies(skill_dir: Path) -> list[dict[str, str]]:
             file=sys.stderr,
         )
         raise SystemExit(1)
+    artifact_path = skill_dir / _ARTIFACT_JSON
     for i, dep in enumerate(raw):
-        if not isinstance(dep, dict) or "name" not in dep or "version" not in dep:
+        if not isinstance(dep, dict):
+            cause = TypeError(f"expected a dict, got {type(dep).__name__}")
             print(
-                f"error: dependency [{i}] in {skill_dir / _ARTIFACT_JSON} "
-                "must be an object with 'name' and 'version' keys",
+                f"error: dependency [{i}] in {artifact_path} "
+                f"must be an object: {cause}",
+                file=sys.stderr,
+            )
+            raise SystemExit(1) from cause
+        source = dep.get("source")  # ty: ignore[invalid-argument-type]
+        if source != "oci":
+            print(
+                f"error: dependency [{i}] in {artifact_path} "
+                f"has unsupported source {source!r}; only 'oci' is supported",
                 file=sys.stderr,
             )
             raise SystemExit(1)
-    return raw  # type: ignore[return-value]
+        for key in ("registry", "repository", "tag"):
+            if key not in dep:
+                print(
+                    f"error: dependency [{i}] in {artifact_path} "
+                    f"is missing required key '{key}'",
+                    file=sys.stderr,
+                )
+                raise SystemExit(1)
+    return raw  # type: ignore[return-value]  # ty: ignore[invalid-return-type]
 
 
 def _available_skills(skills_root: Path) -> list[str]:
@@ -160,11 +183,11 @@ def _ordered_skills_postorder(roots: list[str], skills_root: Path) -> list[str]:
         in_progress.add(name)
         skill_dir = skills_root / name
         for dep in _read_dependencies(skill_dir):
-            dep_name = dep["name"]
+            dep_name = dep["repository"]
             _validate_skill_name(dep_name)
             dep_dir = skills_root / dep_name
             actual_version = _read_artifact_version(dep_dir)
-            declared_version = dep["version"]
+            declared_version = dep["tag"]
             if actual_version != declared_version:
                 print(
                     f"error: {name} declares dependency {dep_name}:{declared_version} "
