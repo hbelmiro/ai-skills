@@ -2,9 +2,9 @@ name: Lint
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
   lint-python:
@@ -28,8 +28,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Type check Python code with ty
-        run: |
-          uv run ty check .
+        run: uv run ty check .
 
   lint-yaml:
     runs-on: ubuntu-latest
@@ -47,5 +46,6 @@ jobs:
 
       - name: Lint YAML files
         run: |
-          find . -path "./.venv" -prune -o -path "./.git" -prune -o \( -name "*.yml" -o -name "*.yaml" \) -print | xargs uv run yamllint -d "{extends: default, rules: {line-length: {max: 120}, indentation: {spaces: 2}}}"
-
+          find . -path "./.venv" -prune -o -path "./.git" -prune -o \
+            \( -name "*.yml" -o -name "*.yaml" \) -print | \
+            xargs uv run yamllint -c .yamllint.yml

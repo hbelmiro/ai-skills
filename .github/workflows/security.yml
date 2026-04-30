@@ -51,6 +51,6 @@ jobs:
         run: |
           uv sync --group security
 
-      - name: Run safety check
+      - name: Run pip-audit
         run: |
-          uv run safety check --json
+          uv run pip-audit

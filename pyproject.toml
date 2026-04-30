@@ -11,7 +11,7 @@ dependencies = [
 [dependency-groups]
 lint = ["ruff", "ty", "yamllint"]
 test = ["pytest"]
-security = ["safety"]
+security = ["pip-audit"]
 assessment = ["agentready"]
 git-hooks = ["pre-commit"]
 dev = [
