@@ -21,17 +21,15 @@ jobs:
       - name: Install lint dependencies
         run: uv sync --group lint
 
-      - name: Lint and format Python code with ruff
-        run: |
-          # Lint Python code
-          uv run ruff check . || echo "Ruff linting issues found"
+      - name: Lint Python code with ruff
+        run: uv run ruff check .
 
-          # Check formatting
-          uv run ruff format --check . || echo "Ruff formatting issues found"
+      - name: Check Python formatting with ruff
+        run: uv run ruff format --check .
 
       - name: Type check Python code with ty
         run: |
-          uv run ty check . || echo "Type checking issues found"
+          uv run ty check .
 
   lint-yaml:
     runs-on: ubuntu-latest
@@ -49,5 +47,5 @@ jobs:
 
       - name: Lint YAML files
         run: |
-          find . -path "./.venv" -prune -o -path "./.git" -prune -o \( -name "*.yml" -o -name "*.yaml" \) -print | xargs uv run yamllint -d "{extends: default, rules: {line-length: {max: 120}, indentation: {spaces: 2}}}" || echo "YAML linting issues found"
+          find . -path "./.venv" -prune -o -path "./.git" -prune -o \( -name "*.yml" -o -name "*.yaml" \) -print | xargs uv run yamllint -d "{extends: default, rules: {line-length: {max: 120}, indentation: {spaces: 2}}}"
 
