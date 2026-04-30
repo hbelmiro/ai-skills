@@ -20,6 +20,11 @@ repos:
       - id: yamllint
         name: yamllint
         entry: bash
-        args: ['-c', 'find . -path "./.venv" -prune -o -path "./.git" -prune -o \( -name "*.yml" -o -name "*.yaml" \) -print | xargs uv run yamllint -d "{extends: default, rules: {line-length: {max: 120}, indentation: {spaces: 2}}}" || echo "YAML linting issues found"']
+        args:
+          - '-c'
+          - >-
+            find . -path "./.venv" -prune -o -path "./.git" -prune -o
+            \( -name "*.yml" -o -name "*.yaml" \) -print |
+            xargs uv run yamllint -c .yamllint.yml
         language: system
         pass_filenames: false
