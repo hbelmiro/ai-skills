@@ -12,13 +12,11 @@ dependencies = [
 lint = ["ruff", "ty", "yamllint"]
 test = ["pytest"]
 security = ["pip-audit"]
-assessment = ["agentready"]
 git-hooks = ["pre-commit"]
 dev = [
     {include-group = "lint"},
     {include-group = "test"},
     {include-group = "security"},
-    {include-group = "assessment"},
     {include-group = "git-hooks"},
 ]
 
