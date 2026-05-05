@@ -29,7 +29,7 @@ skill-name/
 ## Development
 
 - Install all development dependencies: `uv sync --group dev`
-- Install specific groups: `uv sync --group lint` / `--group test` / `--group security` / `--group assessment` / `--group git-hooks`
+- Install specific groups: `uv sync --group lint` / `--group test` / `--group security` / `--group git-hooks`
 - Run linting: `uv run ruff check .`
 - Run formatting: `uv run ruff format .`
 - Run type checking: `uv run ty check .`
@@ -46,7 +46,6 @@ from utils.common import load_config, process_data
 - `lint`: Linting and type checking tools (ruff, ty)
 - `test`: Testing tools (empty for now, add pytest, etc. as needed)
 - `security`: Security scanning tools (safety)
-- `assessment`: Code assessment tools (agentready)
 - `git-hooks`: Git hooks and pre-commit tools (pre-commit)
 - `dev`: All development tools (inherits from all groups)
 
