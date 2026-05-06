@@ -49,3 +49,20 @@ jobs:
           find . -path "./.venv" -prune -o -path "./.git" -prune -o \
             \( -name "*.yml" -o -name "*.yaml" \) -print | \
             xargs uv run yamllint -c .yamllint.yml
+
+  lint-skills:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+
+      - name: Set up Python
+        run: uv python install 3.14
+
+      - name: Install dependencies
+        run: uv sync --group lint
+
+      - name: Check trust boundary preamble in SKILL.md files
+        run: uv run python src/skill_content_lint.py
