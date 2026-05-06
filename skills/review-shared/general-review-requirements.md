@@ -35,6 +35,10 @@ Apply these requirements to every review, regardless of language or component.
 - Probe adversarially: identify at least one
   "what breaks if assumptions are wrong?" scenario and whether a test
   covers it.
+- Never delete test cases covering nil/default behavior in the same PR
+  that changes validation logic. If those cases are genuinely wrong,
+  they should be updated to reflect the new expected behavior, not
+  removed.
 
 ## Mandatory Broken Link Check
 
