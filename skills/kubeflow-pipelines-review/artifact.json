@@ -3,14 +3,14 @@
   "kind": "Skill",
   "metadata": {
     "name": "kubeflow-pipelines-review",
-    "version": "999-SNAPSHOT"
+    "version": "0.5.0"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "kfp-review-checklist.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "python-code-review", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "0.5.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "python-code-review", "tag": "0.5.0" }
   ]
 }

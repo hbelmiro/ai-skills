@@ -3,13 +3,13 @@
   "kind": "Skill",
   "metadata": {
     "name": "go-code-review",
-    "version": "999-SNAPSHOT"
+    "version": "0.5.0"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "go-review-checklist.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "0.5.0" }
   ]
 }
