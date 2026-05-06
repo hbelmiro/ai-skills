@@ -133,7 +133,7 @@ class TestCheckTrustBoundary:
         )
         assert check_trust_boundary(path) is None
 
-    def test_crlf_line_endings_pass(self, tmp_path: Path) -> None:
+    def test_crlf_line_endings_passes(self, tmp_path: Path) -> None:
         skill_dir = tmp_path / "crlf-skill"
         skill_dir.mkdir()
         path = skill_dir / "SKILL.md"
@@ -141,7 +141,7 @@ class TestCheckTrustBoundary:
         path.write_bytes(crlf_content.encode("utf-8"))
         assert check_trust_boundary(path) is None
 
-    def test_cr_only_line_endings_pass(self, tmp_path: Path) -> None:
+    def test_cr_only_line_endings_passes(self, tmp_path: Path) -> None:
         skill_dir = tmp_path / "cr-skill"
         skill_dir.mkdir()
         path = skill_dir / "SKILL.md"

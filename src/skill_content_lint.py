@@ -32,7 +32,6 @@ def find_skill_files(skills_dir: Path) -> list[Path]:
 
 def check_trust_boundary(skill_path: Path) -> str | None:
     content = skill_path.read_text(encoding="utf-8")
-    content = content.replace("\r\n", "\n").replace("\r", "\n")
     lines = content.split("\n")
 
     if not lines or lines[0].strip() != _FRONTMATTER_DELIMITER:
