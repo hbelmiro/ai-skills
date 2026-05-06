@@ -133,6 +133,22 @@ class TestCheckTrustBoundary:
         )
         assert check_trust_boundary(path) is None
 
+    def test_crlf_line_endings_pass(self, tmp_path: Path) -> None:
+        skill_dir = tmp_path / "crlf-skill"
+        skill_dir.mkdir()
+        path = skill_dir / "SKILL.md"
+        crlf_content = _VALID_SKILL.replace("\n", "\r\n")
+        path.write_bytes(crlf_content.encode("utf-8"))
+        assert check_trust_boundary(path) is None
+
+    def test_cr_only_line_endings_pass(self, tmp_path: Path) -> None:
+        skill_dir = tmp_path / "cr-skill"
+        skill_dir.mkdir()
+        path = skill_dir / "SKILL.md"
+        cr_content = _VALID_SKILL.replace("\n", "\r")
+        path.write_bytes(cr_content.encode("utf-8"))
+        assert check_trust_boundary(path) is None
+
 
 class TestFindSkillFiles:
     def test_finds_skill_md_in_subdirectories(self, tmp_path: Path) -> None:
