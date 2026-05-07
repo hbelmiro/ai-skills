@@ -33,6 +33,10 @@ This file tracks AI agents and skills within the monorepo.
   Implement PR review feedback from a PR URL (including bot nitpicks),
   using TDD where applicable, then a fresh `generic-review` fix loop before
   the closing per-comment summary; does not commit or push.
+- `review-and-fix` (Development, Active) in `skills/review-and-fix/`
+  Review-and-fix loop: run `generic-review` with fresh eyes, fix issues
+  using TDD where applicable, repeat until clean, then save the clean
+  review to `<project>/.hbelmiro/reviews/`; does not commit or push.
 
 ## Skill Dependency Graph (`artifact.json`)
 
@@ -49,6 +53,7 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
 - `pr-review` -> `generic-review`
 - `tdd` -> `generic-review`
 - `address-pr-comments` -> `tdd`, `pr-review`
+- `review-and-fix` -> `tdd`, `generic-review`
 
 ### Dependency Layers
 
@@ -57,7 +62,7 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
 - **Layer 2 (domain orchestration):**
   `kubeflow-pipelines-review`, `generic-review`
 - **Layer 3 (entry workflows):** `pr-review`, `tdd`
-- **Layer 4 (PR fix workflow):** `address-pr-comments`
+- **Layer 4 (fix workflows):** `address-pr-comments`, `review-and-fix`
 
 ### Deduplication Guidance
 
@@ -90,6 +95,12 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
   for thread collection and `tdd` for test-first work when it applies;
   require a fresh-eyes `generic-review` fix loop on the current git diff
   before presenting the PR-comment summary; **never** commit or push (user
+  owns git history and remotes).
+- `review-and-fix` owns:
+  the standalone review-fix-save loop on the current change set; rely on
+  `generic-review` for the full-diff review workflow and `tdd` for
+  test-first fixes when behavior or coverage is in play; save the clean
+  review to `<project>/.hbelmiro/reviews/`; **never** commit or push (user
   owns git history and remotes).
 - If a rule already exists in an upstream dependency,
   link/reference it instead of repeating the same prose.
