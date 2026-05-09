@@ -1,0 +1,15 @@
+{
+  "apiVersion": "striatum.dev/v1alpha2",
+  "kind": "Skill",
+  "metadata": {
+    "name": "pr-review-to-file",
+    "version": "999-SNAPSHOT"
+  },
+  "spec": {
+    "entrypoint": "SKILL.md",
+    "files": ["SKILL.md", "README.md", "pr-review-to-file-checklist.md"]
+  },
+  "dependencies": [
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "pr-review", "tag": "999-SNAPSHOT" }
+  ]
+}

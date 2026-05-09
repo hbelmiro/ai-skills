@@ -37,6 +37,10 @@ This file tracks AI agents and skills within the monorepo.
   Review-and-fix loop: run `generic-review` with fresh eyes, fix issues
   using TDD where applicable, repeat until clean, then save the clean
   review to `<project>/.hbelmiro/reviews/`; does not commit or push.
+- `pr-review-to-file` (Code Review, Active) in
+  `skills/pr-review-to-file/`
+  Run `pr-review` for a PR URL and save the review output to
+  `<project>/.hbelmiro/reviews/`; does not commit or push.
 
 ## Skill Dependency Graph (`artifact.json`)
 
@@ -54,6 +58,7 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
 - `tdd` -> `generic-review`
 - `address-pr-comments` -> `tdd`, `pr-review`
 - `review-and-fix` -> `tdd`, `generic-review`
+- `pr-review-to-file` -> `pr-review`
 
 ### Dependency Layers
 
@@ -62,7 +67,8 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
 - **Layer 2 (domain orchestration):**
   `kubeflow-pipelines-review`, `generic-review`
 - **Layer 3 (entry workflows):** `pr-review`, `tdd`
-- **Layer 4 (fix workflows):** `address-pr-comments`, `review-and-fix`
+- **Layer 4 (fix workflows):** `address-pr-comments`, `review-and-fix`,
+  `pr-review-to-file`
 
 ### Deduplication Guidance
 
@@ -100,6 +106,11 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
   the standalone review-fix-save loop on the current change set; rely on
   `generic-review` for the full-diff review workflow and `tdd` for
   test-first fixes when behavior or coverage is in play; save the clean
+  review to `<project>/.hbelmiro/reviews/`; **never** commit or push (user
+  owns git history and remotes).
+- `pr-review-to-file` owns:
+  the PR-review-to-file workflow; rely on `pr-review` for full PR review
+  (gh context, comment validation, generic-review pipeline); save the
   review to `<project>/.hbelmiro/reviews/`; **never** commit or push (user
   owns git history and remotes).
 - If a rule already exists in an upstream dependency,
