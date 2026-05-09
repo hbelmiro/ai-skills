@@ -15,8 +15,8 @@ This file tracks AI agents and skills within the monorepo.
   `skills/python-code-review/`
   Python code review workflow for correctness, security, type safety,
   and tests.
-- `kubeflow-pipelines-review` (Code Review, Active) in
-  `skills/kubeflow-pipelines-review/`
+- `kubeflow-pipelines-code-review` (Code Review, Active) in
+  `skills/kubeflow-pipelines-code-review/`
   KFP review workflow layered on Go and Python baseline checks plus
   control-plane rules.
 - `generic-review` (Code Review, Active) in `skills/generic-review/`
@@ -28,8 +28,8 @@ This file tracks AI agents and skills within the monorepo.
 - `tdd` (Development, Active) in `skills/tdd/`
   Test-first workflow with scenario gates, overlap checks, and final
   review/fix loop.
-- `address-pr-comments` (Development, Active) in
-  `skills/address-pr-comments/`
+- `fix-pr-comments` (Development, Active) in
+  `skills/fix-pr-comments/`
   Implement PR review feedback from a PR URL (including bot nitpicks),
   using TDD where applicable, then a fresh `generic-review` fix loop before
   the closing per-comment summary; does not commit or push.
@@ -49,14 +49,14 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
 - `review-shared` (base; no dependencies)
 - `go-code-review` -> `review-shared`
 - `python-code-review` -> `review-shared`
-- `kubeflow-pipelines-review` ->
+- `kubeflow-pipelines-code-review` ->
   `go-code-review`, `python-code-review`
 - `generic-review` ->
-  `review-shared`, `kubeflow-pipelines-review`,
+  `review-shared`, `kubeflow-pipelines-code-review`,
   `go-code-review`, `python-code-review`
 - `pr-review` -> `generic-review`
 - `tdd` -> `generic-review`
-- `address-pr-comments` -> `tdd`, `pr-review`
+- `fix-pr-comments` -> `tdd`, `pr-review`
 - `review-and-fix` -> `tdd`, `generic-review`
 - `pr-review-to-file` -> `pr-review`
 
@@ -65,9 +65,9 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
 - **Layer 0 (foundation):** `review-shared`
 - **Layer 1 (language):** `go-code-review`, `python-code-review`
 - **Layer 2 (domain orchestration):**
-  `kubeflow-pipelines-review`, `generic-review`
+  `kubeflow-pipelines-code-review`, `generic-review`
 - **Layer 3 (entry workflows):** `pr-review`, `tdd`
-- **Layer 4 (fix workflows):** `address-pr-comments`, `review-and-fix`,
+- **Layer 4 (fix workflows):** `fix-pr-comments`, `review-and-fix`,
   `pr-review-to-file`
 
 ### Deduplication Guidance
@@ -90,13 +90,13 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
   full-diff local-review flow, routing rules, and shared risk/test checks.
 - `go-code-review` and `python-code-review` own:
   language-specific checks only.
-- `kubeflow-pipelines-review` owns:
+- `kubeflow-pipelines-code-review` owns:
   KFP-specific checks only; rely on Go/Python skills for language baseline.
 - `pr-review` owns:
   PR metadata/thread collection only; rely on `generic-review` for findings.
 - `tdd` owns:
   phase sequencing only; rely on `generic-review` for final review behavior.
-- `address-pr-comments` owns:
+- `fix-pr-comments` owns:
   triage and implement review feedback for a PR URL; rely on `pr-review`
   for thread collection and `tdd` for test-first work when it applies;
   require a fresh-eyes `generic-review` fix loop on the current git diff

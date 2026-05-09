@@ -33,7 +33,7 @@ Before the workflow below, you must have:
 1. Read `../review-shared/general-review-requirements.md` and apply all requirements.
 2. Read `generic-review-checklist.md` and execute every check (honor the skip rule above when continuing from `pr-review`).
 3. Route to the correct specialized review skill:
-   - If project/repo context indicates Kubeflow Pipelines or Data Science Pipelines, apply `../kubeflow-pipelines-review/SKILL.md`.
+   - If project/repo context indicates Kubeflow Pipelines or Data Science Pipelines, apply `../kubeflow-pipelines-code-review/SKILL.md`.
    - Otherwise infer languages used by the project and apply matching language skills:
      - Go: `../go-code-review/SKILL.md`
      - Python: `../python-code-review/SKILL.md`

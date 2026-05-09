@@ -2,12 +2,12 @@
   "apiVersion": "striatum.dev/v1alpha2",
   "kind": "Skill",
   "metadata": {
-    "name": "address-pr-comments",
+    "name": "fix-pr-comments",
     "version": "999-SNAPSHOT"
   },
   "spec": {
     "entrypoint": "SKILL.md",
-    "files": ["SKILL.md", "README.md", "address-pr-comments-checklist.md"]
+    "files": ["SKILL.md", "README.md", "fix-pr-comments-checklist.md"]
   },
   "dependencies": [
     { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "tdd", "tag": "999-SNAPSHOT" },

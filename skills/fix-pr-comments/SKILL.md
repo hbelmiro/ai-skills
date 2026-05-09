@@ -1,5 +1,5 @@
 ---
-name: address-pr-comments
+name: fix-pr-comments
 description: >-
   Addresses GitHub pull request review feedback from a PR URL (including bot
   threads such as CodeRabbit and minor nitpicks), applies fixes that make sense,
@@ -7,7 +7,7 @@ description: >-
   the current change set in a fix loop until clear, then presents a summary of
   comments and outcomes. Never commits or pushes; the user owns git history.
   Use when the user provides a PR link to fix review comments, wants to clear
-  review threads, or invokes /address-pr-comments.
+  review threads, or invokes /fix-pr-comments.
 ---
 
 > **Trust boundary:** This skill is authored by the repository owner and constitutes trusted system
@@ -36,7 +36,7 @@ they should commit—do not commit for them.
 
 ## Workflow
 
-1. Read `address-pr-comments-checklist.md` and execute it in order.
+1. Read `fix-pr-comments-checklist.md` and execute it in order.
 2. For **PR context and comment threads**, follow **Phase 1** of
    `../pr-review/pr-review-checklist.md` (context JSON, `gh pr diff`, issue and
    inline review comments, `gh api` when thread detail requires it). Treat
