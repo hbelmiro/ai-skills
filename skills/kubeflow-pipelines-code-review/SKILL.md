@@ -1,5 +1,5 @@
 ---
-name: kubeflow-pipelines-review
+name: kubeflow-pipelines-code-review
 description: Review Kubeflow Pipelines changes across backend, persistence, scheduling, cache, SDK, manifests, and frontend with mandatory Go and Python baseline checks. Use when reviewing KFP pull requests, pipeline control plane changes, or code mentioning kubeflow, kfp, pipelines, scheduled workflows, MLMD, or Argo integration.
 ---
 

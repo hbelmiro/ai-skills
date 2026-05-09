@@ -76,7 +76,7 @@ STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cl
 STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor claude --personal --skill go-code-review
 
 # Install for a specific project
-STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --project /path/to/my-project --skill kubeflow-pipelines-review
+STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --project /path/to/my-project --skill kubeflow-pipelines-code-review
 
 # Uninstall
 uv run python src/install.py --target cursor --personal --uninstall --skill go-code-review

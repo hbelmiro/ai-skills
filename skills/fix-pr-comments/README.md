@@ -13,7 +13,7 @@ or pushes; the user owns git history and remotes.
 
 - `SKILL.md` — entrypoint and workflow rules
 - `artifact.json` — Striatum manifest and dependencies
-- `address-pr-comments-checklist.md` — ordered checks
+- `fix-pr-comments-checklist.md` — ordered checks
 
 ## Install
 
