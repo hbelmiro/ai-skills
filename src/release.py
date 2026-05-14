@@ -31,6 +31,14 @@ def _validate_version(version: str) -> None:
 def _check_preconditions(version: str, previous_tag: str, repo_root: Path) -> None:
     _validate_version(version)
 
+    subprocess.run(
+        ["git", "fetch", "--tags"],
+        capture_output=True,
+        text=True,
+        cwd=repo_root,
+        timeout=30,
+    )
+
     tag = f"v{version}"
     result = subprocess.run(
         ["git", "tag", "--list", tag],
@@ -203,6 +211,14 @@ def main() -> None:
 
         print(f"release {tag} complete", file=sys.stderr)
     finally:
+        print("discarding uncommitted changes", file=sys.stderr)
+        subprocess.run(
+            ["git", "checkout", "."],
+            capture_output=True,
+            text=True,
+            cwd=repo_root,
+            timeout=10,
+        )
         print("switching back to main", file=sys.stderr)
         subprocess.run(
             ["git", "checkout", "main"],
