@@ -108,6 +108,25 @@ Run `uv run python src/install.py --help` for full usage.
 5. Update the `AGENTS.md` registry with your new skill
 6. Tag skills by category for discoverability
 
+## Releasing
+
+Prerequisites: [`gh`](https://cli.github.com/) CLI authenticated, [`uv`](https://docs.astral.sh/uv/) installed.
+
+```bash
+uv run python src/release.py <previous-tag> <new-version>
+# Example:
+uv run python src/release.py v0.5.0 0.6.0
+```
+
+The script:
+
+1. Creates a local `release-X.Y.Z` branch from `main`
+2. Updates all version files from SNAPSHOT to `X.Y.Z`
+3. Syncs `uv.lock` and runs tests
+4. Commits, tags `vX.Y.Z`, and pushes the tag
+5. Creates a GitHub Release with auto-generated notes (diff from the previous tag)
+6. Returns to `main` and deletes the local release branch
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
