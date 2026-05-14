@@ -7,10 +7,11 @@ import json
 import os
 import re
 import shutil
-import subprocess
 import sys
 from collections.abc import Sequence
 from pathlib import Path
+
+from utils.subprocess import run as _run
 
 _SKILLS_DIR_NAME = "skills"
 _ARTIFACT_JSON = "artifact.json"
@@ -84,22 +85,6 @@ def _validate_targets(targets: Sequence[str]) -> None:
 def _dedupe_targets(targets: Sequence[str]) -> list[str]:
     """Deduplicate *targets* while preserving order."""
     return list(dict.fromkeys(targets))
-
-
-def _run(
-    args: list[str], *, cwd: Path | None = None
-) -> subprocess.CompletedProcess[str]:
-    """Run a command, printing stderr on failure."""
-    result = subprocess.run(args, capture_output=True, text=True, cwd=cwd, timeout=120)
-    if result.returncode != 0:
-        msg = (
-            result.stderr.strip()
-            or result.stdout.strip()
-            or f"exit code {result.returncode}"
-        )
-        print(f"error: {args[0]}: {msg}", file=sys.stderr)
-        raise SystemExit(result.returncode)
-    return result
 
 
 def _reference(registry: str, name: str, version: str) -> str:
