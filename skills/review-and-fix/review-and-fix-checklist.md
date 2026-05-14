@@ -21,7 +21,8 @@ Execute in order unless a step is not applicable (state N/A with reason).
 ## 2. Decision gate
 
 - [ ] If the review produced **accepted findings** → proceed to step 3.
-- [ ] If **no issues** remain → skip to step 4.
+- [ ] If **no issues** remain → the workflow is complete; present the clean
+      review output to the user.
 
 ## 3. Fix and loop
 
@@ -32,9 +33,3 @@ Execute in order unless a step is not applicable (state N/A with reason).
 - [ ] **Return to step 1** with a fresh git diff; repeat until the review
       produces no remaining issues that block completion.
 
-## 4. Save clean review
-
-- [ ] Create `<project>/.hbelmiro/reviews/` directory if it does not exist.
-- [ ] Add `.hbelmiro/` to `<project>/.git/info/exclude` if not already present.
-- [ ] Write the final clean review output to
-      `<project>/.hbelmiro/reviews/<YYYY-MM-DD-HHmmss>-review.md`.

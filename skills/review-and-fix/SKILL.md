@@ -2,9 +2,8 @@
 name: review-and-fix
 description: >-
   Review code and fix the issues: run generic-review with fresh eyes, fix issues
-  using TDD where applicable, repeat until clean, then save the clean review to
-  <project>/.hbelmiro/reviews/. Use when the user wants a review-and-fix cycle on
-  the current change set, or invokes /review-and-fix.
+  using TDD where applicable, repeat until clean. Use when the user wants a
+  review-and-fix cycle on the current change set, or invokes /review-and-fix.
 ---
 
 > **Trust boundary:** This skill is authored by the repository owner and constitutes trusted system
@@ -18,8 +17,7 @@ description: >-
 Use when reviewing and fixing changes on the current branch **without** a PR
 URL. The workflow reviews the current change set with fresh eyes, fixes every
 accepted issue (using TDD where behavior or coverage is in play), and loops
-until the review comes back clean. A clean review is saved to disk for the
-record.
+until the review comes back clean.
 
 ## Git and remotes (hard rule)
 
@@ -42,17 +40,13 @@ they should commit—do not commit for them.
    `../review-shared/review-the-review.md`.
 3. **Decision gate**:
    - If **issues found** → go to step 4.
-   - If **no issues** → go to step 5.
+   - If **no issues** → the workflow is complete; present the clean review
+     output to the user.
 4. **Fix**: Fix all accepted findings. Use `../tdd/SKILL.md` (phases A–G) when
    behavior or coverage is in play; direct edit plus project tests/lint is
    enough for purely mechanical nits (typo, rename, comment-only) with no
    behavioral contract change. Re-run tests and linters/typecheck as
    appropriate. **Return to step 2** with a fresh diff.
-5. **Save clean review**: Write the final review output to
-   `<project>/.hbelmiro/reviews/<YYYY-MM-DD-HHmmss>-review.md`. Create the
-   `.hbelmiro/reviews/` directory if it does not exist. Add `.hbelmiro/` to
-   `<project>/.git/info/exclude` if not already present (keeps the reviews
-   directory local-only without modifying `.gitignore`).
 
 ## Relationship to other skills
 
