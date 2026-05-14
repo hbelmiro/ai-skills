@@ -35,8 +35,7 @@ This file tracks AI agents and skills within the monorepo.
   the closing per-comment summary; does not commit or push.
 - `review-and-fix` (Development, Active) in `skills/review-and-fix/`
   Review-and-fix loop: run `generic-review` with fresh eyes, fix issues
-  using TDD where applicable, repeat until clean, then save the clean
-  review to `<project>/.hbelmiro/reviews/`; does not commit or push.
+  using TDD where applicable, repeat until clean; does not commit or push.
 - `pr-review-to-file` (Code Review, Active) in
   `skills/pr-review-to-file/`
   Run `pr-review` for a PR URL and save the review output to
@@ -103,11 +102,10 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
   before presenting the PR-comment summary; **never** commit or push (user
   owns git history and remotes).
 - `review-and-fix` owns:
-  the standalone review-fix-save loop on the current change set; rely on
+  the standalone review-fix loop on the current change set; rely on
   `generic-review` for the full-diff review workflow and `tdd` for
-  test-first fixes when behavior or coverage is in play; save the clean
-  review to `<project>/.hbelmiro/reviews/`; **never** commit or push (user
-  owns git history and remotes).
+  test-first fixes when behavior or coverage is in play; **never** commit
+  or push (user owns git history and remotes).
 - `pr-review-to-file` owns:
   the PR-review-to-file workflow; rely on `pr-review` for full PR review
   (gh context, comment validation, generic-review pipeline); save the

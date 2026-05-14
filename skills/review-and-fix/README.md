@@ -3,8 +3,7 @@
 Workflow skill for reviewing the current change set and fixing issues in a loop:
 run [`generic-review`](../generic-review/) with fresh eyes, fix accepted
 findings (using [`tdd`](../tdd/) when behavior or coverage is in play), and
-repeat until the review comes back clean. The clean review output is saved to
-`<project>/.hbelmiro/reviews/` for the record. The agent **never** commits or
+repeat until the review comes back clean. The agent **never** commits or
 pushes; the user owns git history and remotes.
 
 ## Files
