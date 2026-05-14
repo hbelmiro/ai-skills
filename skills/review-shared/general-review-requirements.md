@@ -11,6 +11,7 @@ Apply these requirements to every review, regardless of language or component.
 - Prefer actionable fixes over generic advice.
 - Be assertive: when a fact is verifiable from the code, state it as a fact. Do not hedge with "if" or "consider" when you can confirm the condition by reading the diff or codebase.
 - Interfaces should not use an `Interface` suffix. Name the interface after the behavior and keep the concrete implementation unexported where the language supports it.
+- A `switch`/`match`/`when` with only one case and a default is a verbose `if`/`else`. Flag it for simplification unless the author documents a concrete plan to add more cases imminently.
 
 ## Independent Reviewer Mode (Mandatory)
 
