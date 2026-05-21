@@ -3,13 +3,13 @@
   "kind": "Skill",
   "metadata": {
     "name": "tdd",
-    "version": "999-SNAPSHOT"
+    "version": "0.7.0"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "README.md", "scenario-coverage.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "generic-review", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "generic-review", "tag": "0.7.0" }
   ]
 }

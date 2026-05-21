@@ -31,7 +31,7 @@ from install import (
 )
 
 # Synthetic artifacts in this module use the same dev version as skills on main.
-DEFAULT_SKILL_VERSION = "999-SNAPSHOT"
+DEFAULT_SKILL_VERSION = "0.7.0"
 _DEFAULT_REGISTRY = "quay.io/hbelmiro"
 
 
