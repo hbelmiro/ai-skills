@@ -2,6 +2,23 @@
 
 Apply every check explicitly, even when a change seems unrelated.
 
+## Static Analysis (golangci-lint)
+
+Run golangci-lint when the target project is a Go module and the tool is available.
+This step is best-effort; if the tool is missing, note the gap and continue with manual checks.
+
+- Confirm a `go.mod` exists at the project root. If not, skip this section.
+- Check availability: `which golangci-lint`. If unavailable, record "golangci-lint: not available — skipped" in the review output's Coverage Check and proceed.
+- Run: `golangci-lint run ./...` from the module root. If a config file exists (`.golangci.yml`, `.golangci.yaml`, or `.golangci.toml`), golangci-lint picks it up automatically.
+- **Diff-scope filter:** Only report findings on files and lines touched by the change under review. Cross-reference linter output against the diff. Discard findings on unchanged lines.
+- **Severity mapping:** Classify each diff-scoped finding using the severity rubric (`../review-shared/severity-rubric.md`). Guidance:
+  - Correctness linters (`govet`, `staticcheck`, `typecheck`): typically High or Critical.
+  - Error-handling linters (`errcheck`): typically High.
+  - Style and formatting linters (`revive`, `gofmt`, `goimports`, `misspell`): typically Low.
+  - The rubric takes precedence; adjust when context warrants a different severity.
+- **Deduplication:** When a linter finding covers the same issue as a manual checklist item below, report it once. Cite the linter as supporting evidence rather than listing both separately.
+- **Coverage Check annotation:** Annotate the "Go baseline checklist" line with golangci-lint status: ran (with finding count on changed lines), not available, or skipped (with reason).
+
 ## Core Go Standards
 
 - Returned errors are handled by the caller.
