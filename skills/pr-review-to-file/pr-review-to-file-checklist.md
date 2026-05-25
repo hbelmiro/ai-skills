@@ -19,7 +19,10 @@ Execute in order unless a step is not applicable (state N/A with reason).
 ## 2. Save review to file
 
 - [ ] Parse the PR number from the URL.
-- [ ] Create `<project>/.hbelmiro/reviews/` directory if it does not exist.
-- [ ] Add `.hbelmiro/` to `<project>/.git/info/exclude` if not already present.
+- [ ] Resolve the working tree root: `TREE_ROOT="$(git rev-parse --show-toplevel)"`
+      (returns the worktree root when inside a worktree, not the main repository).
+- [ ] Create `"$TREE_ROOT"/.hbelmiro/reviews/` directory if it does not exist.
+- [ ] Add `.hbelmiro/` to `$(git rev-parse --git-dir)/info/exclude` if not
+      already present.
 - [ ] Write the final review output to
-      `<project>/.hbelmiro/reviews/<YYYY-MM-DD-HHmmss>-pr-<PR_NUMBER>-review.md`.
+      `"$TREE_ROOT"/.hbelmiro/reviews/<YYYY-MM-DD-HHmmss>-pr-<PR_NUMBER>-review.md`.

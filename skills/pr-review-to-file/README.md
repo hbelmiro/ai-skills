@@ -1,7 +1,7 @@
 # PR Review to File
 
 Review a GitHub pull request via [`pr-review`](../pr-review/) and save the
-review output to `<project>/.hbelmiro/reviews/` for the record. The agent
+review output to `.hbelmiro/reviews/` for the record. The agent
 **never** commits or pushes; the user owns git history and remotes.
 
 ## Files
