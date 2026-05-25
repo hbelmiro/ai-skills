@@ -3,7 +3,7 @@
   "kind": "Skill",
   "metadata": {
     "name": "review-shared",
-    "version": "999-SNAPSHOT"
+    "version": "0.8.0"
   },
   "spec": {
     "entrypoint": "README.md",
