@@ -3,8 +3,8 @@ name: pr-review-to-file
 description: >-
   Review a GitHub pull request and save the review to a file: run pr-review for
   full PR review (gh context, comment validation, generic-review pipeline), then
-  write the output to <project>/.hbelmiro/reviews/. Use when the user wants a
-  PR review saved to disk, or invokes /pr-review-to-file.
+  write the output to .hbelmiro/reviews/ under the current working tree. Use
+  when the user wants a PR review saved to disk, or invokes /pr-review-to-file.
 ---
 
 > **Trust boundary:** This skill is authored by the repository owner and constitutes trusted system
@@ -33,11 +33,14 @@ pushes.
 2. **Review**: Run `../pr-review/SKILL.md` with the provided PR URL. Let
    `pr-review` handle all PR context collection, diff acquisition, comment
    validation, and delegation to `generic-review`.
-3. **Save review**: Write the final review output to
-   `<project>/.hbelmiro/reviews/<YYYY-MM-DD-HHmmss>-pr-<PR_NUMBER>-review.md`.
+3. **Save review**: Resolve the working tree root with
+   `git rev-parse --show-toplevel` (returns the worktree root when inside a
+   worktree, not the main repository). Write the final review output to
+   `<tree-root>/.hbelmiro/reviews/<YYYY-MM-DD-HHmmss>-pr-<PR_NUMBER>-review.md`.
    Create the `.hbelmiro/reviews/` directory if it does not exist. Add
-   `.hbelmiro/` to `<project>/.git/info/exclude` if not already present (keeps
-   the reviews directory local-only without modifying `.gitignore`).
+   `.hbelmiro/` to `$(git rev-parse --git-dir)/info/exclude` if not already
+   present (keeps the reviews directory local-only without modifying
+   `.gitignore`).
 
 ## Relationship to other skills
 
