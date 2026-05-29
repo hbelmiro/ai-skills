@@ -54,6 +54,12 @@ In the template above, replace BACKTICK with a single backtick character.
 The placeholder is used here only because real backticks inside this template
 would be consumed by the markdown parser instead of being reproduced in output.
 
+**Deleted-line findings:** When a finding is about code that was **removed** in
+the diff, the deleted lines have no valid line number in the current file. Use
+the nearest surviving line as the anchor and note the deletion explicitly — e.g.,
+Line: BACKTICK 139 BACKTICK (deleted line — visible only in diff).
+Never cite a line number that points to unrelated code in the current file.
+
 ## Findings not repeated (already in PR discussion)
 
 **PR reviews only.** Omit this section when not PR-linked or when nothing was suppressed.

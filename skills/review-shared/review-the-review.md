@@ -20,6 +20,7 @@ just silently correct the review itself.
 ## Accuracy
 
 - Each finding references the correct file path and line number. Re-read the diff to verify every line number points to the exact line described — do not trust line numbers from memory.
+- For findings about **removed** lines, verify the Line field references the nearest surviving context line and explicitly notes the deletion — not a line number that points to unrelated code in the current file.
 - Quoted code snippets match the actual diff content (no stale or hallucinated code).
 - Severity classifications are consistent with the severity rubric.
 - Suggested fixes are syntactically valid and would actually resolve the issue.
