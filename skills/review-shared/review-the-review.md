@@ -8,7 +8,7 @@ just silently correct the review itself.
 ## Completeness
 
 - Every changed file in the diff is accounted for (reviewed or explicitly noted as no-issue).
-- All checklist sections from the applicable skill(s) were executed; none were silently skipped.
+- All checklist sections from the applicable artifact(s) were executed; none were silently skipped.
 - The Coverage Check section accurately reflects which checklists were completed.
 - **Open Questions** is always present, but bullets list **only** uncertainties
   that stay unresolved **after** you searched the codebase, tests, and

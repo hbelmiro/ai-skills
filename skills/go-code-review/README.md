@@ -1,11 +1,8 @@
-# Go Code Review Skill
+# Go Code Review Prompt
 
-General Go review skill focused on correctness, security, concurrency safety, and test quality.
+General Go review prompt focused on correctness, security, concurrency safety, and test quality.
 
 ## Files
 
-- `SKILL.md`: Agent instructions and workflow.
+- `PROMPT.md`: Review checklist and workflow.
 
-## Usage
-
-Use when reviewing Go pull requests or backend changes that require deep Go reliability checks.

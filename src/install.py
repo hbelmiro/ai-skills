@@ -137,6 +137,15 @@ def _read_artifact_name(skill_dir: Path) -> str:
         raise SystemExit(1) from exc
 
 
+def _read_artifact_kind(skill_dir: Path) -> str:
+    data = _load_artifact(skill_dir)
+    try:
+        return str(data["kind"])
+    except KeyError as exc:
+        print(f"error: invalid artifact.json in {skill_dir}: {exc}", file=sys.stderr)
+        raise SystemExit(1) from exc
+
+
 def _read_dependencies(skill_dir: Path) -> list[dict[str, str]]:
     """Parse v1alpha2 OCI dependencies from artifact.json.
 
@@ -297,9 +306,12 @@ def _install_ordered_skills(
     project: str | None = None,
     force: bool = False,
 ) -> None:
-    n = len(names)
+    skills_only = [
+        name for name in names if _read_artifact_kind(skills_root / name) == "Skill"
+    ]
+    n = len(skills_only)
     installed_ok: list[str] = []
-    for i, name in enumerate(names, start=1):
+    for i, name in enumerate(skills_only, start=1):
         skill_dir = skills_root / name
         version = _read_artifact_version(skill_dir)
         artifact_name = _read_artifact_name(skill_dir)
