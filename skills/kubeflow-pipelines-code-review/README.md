@@ -1,12 +1,8 @@
-# Kubeflow Pipelines Review Skill
+# Kubeflow Pipelines Review Prompt
 
-KFP-specific review skill layered on top of baseline Go review checks.
+KFP-specific review prompt layered on top of baseline Go and Python review checks.
 
 ## Files
 
-- `SKILL.md`: End-to-end KFP review workflow.
+- `PROMPT.md`: End-to-end KFP review workflow.
 - `kfp-review-checklist.md`: Mandatory KFP domain checks.
-
-## Usage
-
-Use when reviewing Kubeflow Pipelines pull requests that span backend, persistence, scheduling, cache, SDK, manifests, or UI contracts.

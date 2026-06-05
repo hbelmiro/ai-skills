@@ -1,6 +1,6 @@
 {
   "apiVersion": "striatum.dev/v1alpha2",
-  "kind": "Skill",
+  "kind": "Prompt",
   "metadata": {
     "name": "review-shared",
     "version": "999-SNAPSHOT"

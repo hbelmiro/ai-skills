@@ -1,13 +1,13 @@
 {
   "apiVersion": "striatum.dev/v1alpha2",
-  "kind": "Skill",
+  "kind": "Prompt",
   "metadata": {
     "name": "kubeflow-pipelines-code-review",
     "version": "999-SNAPSHOT"
   },
   "spec": {
-    "entrypoint": "SKILL.md",
-    "files": ["SKILL.md", "kfp-review-checklist.md"]
+    "entrypoint": "PROMPT.md",
+    "files": ["PROMPT.md", "kfp-review-checklist.md"]
   },
   "dependencies": [
     { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "999-SNAPSHOT" },

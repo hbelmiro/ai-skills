@@ -17,6 +17,7 @@ from install import (
     _available_skills,
     _global_install_order,
     _load_artifact,
+    _read_artifact_kind,
     _read_artifact_name,
     _read_artifact_version,
     _read_dependencies,
@@ -56,6 +57,7 @@ def _make_artifact(
     dependencies: list[dict[str, str]] | None = None,
     with_skill_md: bool = True,
     raw_json: str | None = None,
+    kind: str = "Skill",
 ) -> Path:
     skill_dir = skills_root / name
     skill_dir.mkdir(parents=True, exist_ok=True)
@@ -64,7 +66,7 @@ def _make_artifact(
     else:
         artifact: dict[str, object] = {
             "apiVersion": "striatum.dev/v1alpha2",
-            "kind": "Skill",
+            "kind": kind,
             "metadata": {"name": name, "version": version},
             "spec": {"entrypoint": "SKILL.md", "files": ["SKILL.md"]},
         }
@@ -271,6 +273,18 @@ class TestArtifactReading:
     def test_read_name(self, skills_root: Path) -> None:
         _make_artifact(skills_root, "my-skill")
         assert _read_artifact_name(skills_root / "my-skill") == "my-skill"
+
+    def test_read_kind_skill(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "my-skill")
+        assert _read_artifact_kind(skills_root / "my-skill") == "Skill"
+
+    def test_read_kind_prompt(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "my-prompt", kind="Prompt")
+        assert _read_artifact_kind(skills_root / "my-prompt") == "Prompt"
+
+    def test_read_kind_missing_file(self, tmp_path: Path) -> None:
+        with pytest.raises(SystemExit):
+            _read_artifact_kind(tmp_path / "nonexistent")
 
     def test_read_dependencies_present(self, skills_root: Path) -> None:
         _make_artifact(
@@ -510,6 +524,34 @@ class TestResolveAllDeps:
         result = _resolve_all_deps("root", skills_root)
         assert result.count("shared") == 1
 
+    def test_prompt_dependency(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "shared-prompt", kind="Prompt")
+        _make_artifact(
+            skills_root,
+            "consumer",
+            dependencies=[_oci_dep("shared-prompt")],
+        )
+        result = _resolve_all_deps("consumer", skills_root)
+        assert result == ["shared-prompt", "consumer"]
+
+    def test_mixed_skill_and_prompt_deps(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            skills_root,
+            "go-review",
+            kind="Prompt",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[_oci_dep("go-review")],
+        )
+        result = _resolve_all_deps("generic-review", skills_root)
+        assert result.index("review-shared") < result.index("go-review")
+        assert result.index("go-review") < result.index("generic-review")
+        assert len(result) == 3
+
     def test_cycle_detected(self, skills_root: Path) -> None:
         _make_artifact(
             skills_root,
@@ -645,6 +687,24 @@ class TestGlobalInstallOrder:
         with pytest.raises(SystemExit):
             _global_install_order(skills_root)
 
+    def test_mixed_skills_and_prompts_ordered(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            skills_root,
+            "go-review",
+            kind="Prompt",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[_oci_dep("go-review")],
+        )
+        order = _global_install_order(skills_root)
+        assert order.index("review-shared") < order.index("go-review")
+        assert order.index("go-review") < order.index("generic-review")
+        assert len(order) == 3
+
     def test_empty_skills_dir(self, tmp_path: Path) -> None:
         empty = tmp_path / "skills"
         empty.mkdir()
@@ -777,6 +837,28 @@ class TestPackAndPush:
                 "localhost:5050/skills",
                 striatum="/usr/bin/striatum",
             )
+
+    def test_prompt_artifact_packs_and_pushes(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(skills_root, "my-prompt", kind="Prompt")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+        monkeypatch.setattr("install._run", fake_run)
+
+        pack_and_push(
+            "my-prompt",
+            skills_root,
+            "localhost:5050/skills",
+            striatum="/usr/bin/striatum",
+        )
+
+        assert len(calls) == 3
+        assert calls[0][1] == "validate"
+        assert calls[1][1] == "pack"
+        assert calls[2][1] == "push"
+        assert f"localhost:5050/skills/my-prompt:{DEFAULT_SKILL_VERSION}" in calls[2]
 
     def test_rejects_invalid_skill_name(self, skills_root: Path) -> None:
         with pytest.raises(SystemExit):
@@ -945,6 +1027,41 @@ class TestInstallSkill:
         with pytest.raises(SystemExit):
             install_skill("my-skill", targets=["cursor"])
 
+    def test_skill_with_prompt_deps_packs_all_but_installs_only_skills(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(skills_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            skills_root,
+            "go-review",
+            kind="Prompt",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[
+                _oci_dep("review-shared"),
+                _oci_dep("go-review"),
+            ],
+        )
+
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_skill("generic-review", targets=["cursor"])
+
+        push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
+        assert len(push_calls) == 3
+
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        assert len(install_calls) == 1
+        assert any("generic-review" in str(arg) for arg in install_calls[0])
+
     def test_rejects_invalid_skill_name(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
@@ -1077,6 +1194,38 @@ class TestInstallAllSkills:
         err = capsys.readouterr().err
         assert "successful installs before failure" in err
         assert "review-shared" in err
+
+    def test_install_all_skips_prompt_artifacts(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(skills_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            skills_root,
+            "go-review",
+            kind="Prompt",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[_oci_dep("go-review")],
+        )
+
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_all_skills(targets=["cursor"])
+
+        push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
+        assert len(push_calls) == 3
+
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        assert len(install_calls) == 1
+        assert any("generic-review" in str(arg) for arg in install_calls[0])
 
 
 # ---------------------------------------------------------------------------
