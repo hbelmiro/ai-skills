@@ -84,18 +84,24 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Check SKILL.md and PROMPT.md files for trust boundary preamble.",
     )
+    root = _repo_root()
     parser.add_argument(
-        "--skills-dir",
+        "--dir",
         type=Path,
-        default=_repo_root() / "skills",
-        help="Path to the skills directory (default: <repo>/skills)",
+        nargs="+",
+        default=[root / "skills", root / "prompts"],
+        help="Directories to scan (default: <repo>/skills <repo>/prompts)",
     )
     return parser
 
 
 def main() -> None:
     args = _build_parser().parse_args()
-    sys.exit(lint_skills(args.skills_dir))
+    exit_code = 0
+    for d in args.dir:
+        if lint_skills(d) != 0:
+            exit_code = 1
+    sys.exit(exit_code)
 
 
 if __name__ == "__main__":

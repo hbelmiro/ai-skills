@@ -4,19 +4,20 @@ This file tracks AI agents and skills within the monorepo.
 
 ## Maintenance Rule
 
-- Keep this file up to date whenever a skill is added, removed, renamed,
-  moved, or when any `skills/*/artifact.json` dependency metadata changes.
+- Keep this file up to date whenever a skill or prompt is added, removed,
+  renamed, moved, or when any `skills/*/artifact.json` or
+  `prompts/*/artifact.json` dependency metadata changes.
 
 ## Agent Registry
 
-- `go-code-review` (Code Review, Active) in `skills/go-code-review/`
+- `go-code-review` (Code Review, Active) in `prompts/go-code-review/`
   Go code review workflow for correctness, reliability, security, and tests.
 - `python-code-review` (Code Review, Active) in
-  `skills/python-code-review/`
+  `prompts/python-code-review/`
   Python code review workflow for correctness, security, type safety,
   and tests.
 - `kubeflow-pipelines-code-review` (Code Review, Active) in
-  `skills/kubeflow-pipelines-code-review/`
+  `prompts/kubeflow-pipelines-code-review/`
   KFP review workflow layered on Go and Python baseline checks plus
   control-plane rules.
 - `generic-review` (Code Review, Active) in `skills/generic-review/`
@@ -43,7 +44,8 @@ This file tracks AI agents and skills within the monorepo.
 
 ## Skill Dependency Graph (`artifact.json`)
 
-Dependency source: `skills/*/artifact.json` (`dependencies` field).
+Dependency source: `skills/*/artifact.json` and `prompts/*/artifact.json`
+(`dependencies` field).
 
 - `review-shared` (base; no dependencies)
 - `go-code-review` -> `review-shared`
@@ -116,7 +118,7 @@ Dependency source: `skills/*/artifact.json` (`dependencies` field).
 
 ## Adding New Agents
 
-1. Create a new directory under `skills/`
+1. Create a new directory under `skills/` (for kind: Skill) or `prompts/` (for kind: Prompt)
 2. Follow the structure outlined in the [root README](README.md#skill-structure)
 3. Add your agent to the registry section above
 4. Include a clear description and usage instructions

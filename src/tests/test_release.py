@@ -116,6 +116,8 @@ def _make_repo(
     *,
     skill_names: list[str] | None = None,
     skill_deps: dict[str, list[tuple[str, str]]] | None = None,
+    prompt_names: list[str] | None = None,
+    prompt_deps: dict[str, list[tuple[str, str]]] | None = None,
 ) -> Path:
     """Create a minimal repo structure for integration tests."""
     repo = tmp_path / "repo"
@@ -128,6 +130,12 @@ def _make_repo(
     for name in skill_names or []:
         deps = (skill_deps or {}).get(name)
         _make_artifact(skills_root, name, deps=deps)
+    if prompt_names:
+        prompts_root = repo / "prompts"
+        prompts_root.mkdir()
+        for name in prompt_names:
+            deps = (prompt_deps or {}).get(name)
+            _make_artifact(prompts_root, name, deps=deps)
     return repo
 
 
@@ -392,3 +400,25 @@ class TestSetReleaseVersion:
             encoding="utf-8"
         )
         assert '"tag": "1.0.0"' in go_artifact
+
+    def test_updates_artifacts_in_both_skills_and_prompts(self, tmp_path: Path) -> None:
+        repo = _make_repo(
+            tmp_path,
+            skill_names=["generic-review"],
+            skill_deps={"generic-review": [("review-shared", _ARTIFACT_SNAPSHOT)]},
+            prompt_names=["review-shared"],
+        )
+
+        _set_release_version(repo, "2.0.0")
+
+        skill_artifact = (
+            repo / "skills" / "generic-review" / "artifact.json"
+        ).read_text(encoding="utf-8")
+        assert '"version": "2.0.0"' in skill_artifact
+        assert _ARTIFACT_SNAPSHOT not in skill_artifact
+
+        prompt_artifact = (
+            repo / "prompts" / "review-shared" / "artifact.json"
+        ).read_text(encoding="utf-8")
+        assert '"version": "2.0.0"' in prompt_artifact
+        assert _ARTIFACT_SNAPSHOT not in prompt_artifact

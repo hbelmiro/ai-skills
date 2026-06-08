@@ -14,7 +14,9 @@ import pytest
 import install as install_module
 
 from install import (
+    _available_artifacts,
     _available_skills,
+    _find_artifact_dir,
     _global_install_order,
     _load_artifact,
     _read_artifact_kind,
@@ -93,6 +95,11 @@ def _make_artifact(
 @pytest.fixture()
 def skills_root(tmp_path: Path) -> Path:
     return tmp_path / "skills"
+
+
+@pytest.fixture()
+def prompts_root(tmp_path: Path) -> Path:
+    return tmp_path / "prompts"
 
 
 def _fake_run_factory() -> tuple[list[list[str]], object]:
@@ -191,7 +198,7 @@ class TestValidateTargets:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         _make_artifact(skills_root, "my-skill")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
 
         with pytest.raises(SystemExit):
             install_skill("my-skill", targets=["vscode"])
@@ -208,7 +215,7 @@ class TestValidateTargets:
     ) -> None:
         empty = tmp_path / "skills"
         empty.mkdir()
-        monkeypatch.setattr("install._skills_root", lambda: empty)
+        monkeypatch.setattr("install._artifact_roots", lambda: [empty])
 
         with pytest.raises(SystemExit):
             install_all_skills(targets=["vscode"])
@@ -238,7 +245,7 @@ class TestValidateTargets:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         _make_artifact(skills_root, "my-skill")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
 
         with pytest.raises(SystemExit):
             install_skill("my-skill", targets=["cursor", "vscode"])
@@ -254,10 +261,90 @@ class TestValidateTargets:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         _make_artifact(skills_root, "my-skill")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
 
         with pytest.raises(SystemExit):
             install_skill("my-skill", targets=[])
+
+
+# ---------------------------------------------------------------------------
+# _find_artifact_dir
+# ---------------------------------------------------------------------------
+
+
+class TestFindArtifactDir:
+    def test_finds_artifact_in_first_dir(
+        self, skills_root: Path, prompts_root: Path
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        result = _find_artifact_dir("my-skill", [skills_root, prompts_root])
+        assert result == skills_root / "my-skill"
+
+    def test_finds_artifact_in_second_dir(
+        self, skills_root: Path, prompts_root: Path
+    ) -> None:
+        _make_artifact(prompts_root, "my-prompt", kind="Prompt")
+        result = _find_artifact_dir("my-prompt", [skills_root, prompts_root])
+        assert result == prompts_root / "my-prompt"
+
+    def test_first_dir_wins_when_both_contain_artifact(
+        self, skills_root: Path, prompts_root: Path
+    ) -> None:
+        _make_artifact(skills_root, "duplicate")
+        _make_artifact(prompts_root, "duplicate")
+        result = _find_artifact_dir("duplicate", [skills_root, prompts_root])
+        assert result == skills_root / "duplicate"
+
+    def test_exits_when_artifact_not_found(
+        self, skills_root: Path, prompts_root: Path
+    ) -> None:
+        skills_root.mkdir(parents=True, exist_ok=True)
+        prompts_root.mkdir(parents=True, exist_ok=True)
+        with pytest.raises(SystemExit):
+            _find_artifact_dir("nonexistent", [skills_root, prompts_root])
+
+    def test_error_lists_available_from_all_dirs(
+        self,
+        skills_root: Path,
+        prompts_root: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        _make_artifact(skills_root, "skill-a")
+        _make_artifact(prompts_root, "prompt-b", kind="Prompt")
+        with pytest.raises(SystemExit):
+            _find_artifact_dir("nonexistent", [skills_root, prompts_root])
+        err = capsys.readouterr().err
+        assert "skill-a" in err
+        assert "prompt-b" in err
+
+
+# ---------------------------------------------------------------------------
+# _available_artifacts
+# ---------------------------------------------------------------------------
+
+
+class TestAvailableArtifacts:
+    def test_merges_from_multiple_dirs(
+        self, skills_root: Path, prompts_root: Path
+    ) -> None:
+        _make_artifact(skills_root, "skill-b")
+        _make_artifact(prompts_root, "prompt-a", kind="Prompt")
+        result = _available_artifacts([skills_root, prompts_root])
+        assert result == ["prompt-a", "skill-b"]
+
+    def test_empty_dirs(self, tmp_path: Path) -> None:
+        empty_a = tmp_path / "a"
+        empty_b = tmp_path / "b"
+        empty_a.mkdir()
+        empty_b.mkdir()
+        assert _available_artifacts([empty_a, empty_b]) == []
+
+    def test_nonexistent_dirs(self, tmp_path: Path) -> None:
+        assert _available_artifacts([tmp_path / "nope", tmp_path / "nope2"]) == []
+
+    def test_single_dir(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "solo")
+        assert _available_artifacts([skills_root]) == ["solo"]
 
 
 # ---------------------------------------------------------------------------
@@ -462,7 +549,7 @@ class TestAvailableSkills:
 class TestResolveAllDeps:
     def test_no_deps(self, skills_root: Path) -> None:
         _make_artifact(skills_root, "standalone")
-        assert _resolve_all_deps("standalone", skills_root) == ["standalone"]
+        assert _resolve_all_deps("standalone", [skills_root]) == ["standalone"]
 
     def test_single_dep(self, skills_root: Path) -> None:
         _make_artifact(skills_root, "base")
@@ -471,7 +558,7 @@ class TestResolveAllDeps:
             "child",
             dependencies=[_oci_dep("base")],
         )
-        result = _resolve_all_deps("child", skills_root)
+        result = _resolve_all_deps("child", [skills_root])
         assert result == ["base", "child"]
 
     def test_transitive_deps(self, skills_root: Path) -> None:
@@ -494,7 +581,7 @@ class TestResolveAllDeps:
                 _oci_dep("python-code-review"),
             ],
         )
-        result = _resolve_all_deps("kfp-review", skills_root)
+        result = _resolve_all_deps("kfp-review", [skills_root])
         assert result.index("review-shared") < result.index("go-code-review")
         assert result.index("review-shared") < result.index("python-code-review")
         assert result.index("go-code-review") < result.index("kfp-review")
@@ -521,7 +608,7 @@ class TestResolveAllDeps:
                 _oci_dep("b"),
             ],
         )
-        result = _resolve_all_deps("root", skills_root)
+        result = _resolve_all_deps("root", [skills_root])
         assert result.count("shared") == 1
 
     def test_prompt_dependency(self, skills_root: Path) -> None:
@@ -531,7 +618,7 @@ class TestResolveAllDeps:
             "consumer",
             dependencies=[_oci_dep("shared-prompt")],
         )
-        result = _resolve_all_deps("consumer", skills_root)
+        result = _resolve_all_deps("consumer", [skills_root])
         assert result == ["shared-prompt", "consumer"]
 
     def test_mixed_skill_and_prompt_deps(self, skills_root: Path) -> None:
@@ -547,7 +634,7 @@ class TestResolveAllDeps:
             "generic-review",
             dependencies=[_oci_dep("go-review")],
         )
-        result = _resolve_all_deps("generic-review", skills_root)
+        result = _resolve_all_deps("generic-review", [skills_root])
         assert result.index("review-shared") < result.index("go-review")
         assert result.index("go-review") < result.index("generic-review")
         assert len(result) == 3
@@ -564,7 +651,7 @@ class TestResolveAllDeps:
             dependencies=[_oci_dep("a")],
         )
         with pytest.raises(SystemExit):
-            _resolve_all_deps("a", skills_root)
+            _resolve_all_deps("a", [skills_root])
 
     def test_self_cycle_detected(self, skills_root: Path) -> None:
         _make_artifact(
@@ -573,7 +660,7 @@ class TestResolveAllDeps:
             dependencies=[_oci_dep("self-ref")],
         )
         with pytest.raises(SystemExit):
-            _resolve_all_deps("self-ref", skills_root)
+            _resolve_all_deps("self-ref", [skills_root])
 
     def test_version_mismatch_exits(self, skills_root: Path) -> None:
         _make_artifact(skills_root, "dep", version="2.0.0")
@@ -583,7 +670,7 @@ class TestResolveAllDeps:
             dependencies=[_oci_dep("dep")],
         )
         with pytest.raises(SystemExit):
-            _resolve_all_deps("root", skills_root)
+            _resolve_all_deps("root", [skills_root])
 
     def test_invalid_dep_name_exits(self, skills_root: Path) -> None:
         _make_artifact(
@@ -599,7 +686,59 @@ class TestResolveAllDeps:
             ),
         )
         with pytest.raises(SystemExit):
-            _resolve_all_deps("root", skills_root)
+            _resolve_all_deps("root", [skills_root])
+
+    def test_cross_directory_dependency(
+        self, skills_root: Path, prompts_root: Path
+    ) -> None:
+        _make_artifact(prompts_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        result = _resolve_all_deps("generic-review", [skills_root, prompts_root])
+        assert result == ["review-shared", "generic-review"]
+
+    def test_cross_directory_transitive_chain(
+        self, skills_root: Path, prompts_root: Path
+    ) -> None:
+        _make_artifact(prompts_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            prompts_root,
+            "go-code-review",
+            kind="Prompt",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[_oci_dep("go-code-review")],
+        )
+        result = _resolve_all_deps("generic-review", [skills_root, prompts_root])
+        assert result.index("review-shared") < result.index("go-code-review")
+        assert result.index("go-code-review") < result.index("generic-review")
+        assert len(result) == 3
+
+    def test_missing_dependency_exits_with_available_list(
+        self,
+        skills_root: Path,
+        prompts_root: Path,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        """When a dependency doesn't exist, error lists available artifacts from all dirs."""
+        _make_artifact(prompts_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[_oci_dep("nonexistent-dep")],
+        )
+        with pytest.raises(SystemExit):
+            _resolve_all_deps("generic-review", [skills_root, prompts_root])
+        err = capsys.readouterr().err
+        assert "nonexistent-dep" in err
+        assert "review-shared" in err
+        assert "generic-review" in err
 
 
 # ---------------------------------------------------------------------------
@@ -612,7 +751,7 @@ class TestGlobalInstallOrder:
         _make_artifact(skills_root, "zebra")
         _make_artifact(skills_root, "alpha")
         _make_artifact(skills_root, "middle")
-        assert _global_install_order(skills_root) == ["alpha", "middle", "zebra"]
+        assert _global_install_order([skills_root]) == ["alpha", "middle", "zebra"]
 
     def test_linear_chain_dep_before_dependent(self, skills_root: Path) -> None:
         _make_artifact(skills_root, "base")
@@ -621,7 +760,7 @@ class TestGlobalInstallOrder:
             "child",
             dependencies=[_oci_dep("base")],
         )
-        order = _global_install_order(skills_root)
+        order = _global_install_order([skills_root])
         assert order == ["base", "child"]
 
     def test_diamond_shared_once_before_consumers_and_root(
@@ -646,7 +785,7 @@ class TestGlobalInstallOrder:
                 _oci_dep("consumer-b"),
             ],
         )
-        order = _global_install_order(skills_root)
+        order = _global_install_order([skills_root])
         assert order.count("shared") == 1
         assert order.index("shared") < order.index("consumer-a")
         assert order.index("shared") < order.index("consumer-b")
@@ -666,7 +805,7 @@ class TestGlobalInstallOrder:
             dependencies=[_oci_dep("a")],
         )
         with pytest.raises(SystemExit):
-            _global_install_order(skills_root)
+            _global_install_order([skills_root])
 
     def test_self_cycle_detected(self, skills_root: Path) -> None:
         _make_artifact(
@@ -675,7 +814,7 @@ class TestGlobalInstallOrder:
             dependencies=[_oci_dep("self-ref")],
         )
         with pytest.raises(SystemExit):
-            _global_install_order(skills_root)
+            _global_install_order([skills_root])
 
     def test_version_mismatch_exits(self, skills_root: Path) -> None:
         _make_artifact(skills_root, "dep", version="2.0.0")
@@ -685,7 +824,7 @@ class TestGlobalInstallOrder:
             dependencies=[_oci_dep("dep")],
         )
         with pytest.raises(SystemExit):
-            _global_install_order(skills_root)
+            _global_install_order([skills_root])
 
     def test_mixed_skills_and_prompts_ordered(self, skills_root: Path) -> None:
         _make_artifact(skills_root, "review-shared", kind="Prompt")
@@ -700,7 +839,7 @@ class TestGlobalInstallOrder:
             "generic-review",
             dependencies=[_oci_dep("go-review")],
         )
-        order = _global_install_order(skills_root)
+        order = _global_install_order([skills_root])
         assert order.index("review-shared") < order.index("go-review")
         assert order.index("go-review") < order.index("generic-review")
         assert len(order) == 3
@@ -708,7 +847,27 @@ class TestGlobalInstallOrder:
     def test_empty_skills_dir(self, tmp_path: Path) -> None:
         empty = tmp_path / "skills"
         empty.mkdir()
-        assert _global_install_order(empty) == []
+        assert _global_install_order([empty]) == []
+
+    def test_global_order_across_directories(
+        self, skills_root: Path, prompts_root: Path
+    ) -> None:
+        _make_artifact(prompts_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            prompts_root,
+            "go-review",
+            kind="Prompt",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[_oci_dep("go-review")],
+        )
+        order = _global_install_order([skills_root, prompts_root])
+        assert order.index("review-shared") < order.index("go-review")
+        assert order.index("go-review") < order.index("generic-review")
+        assert len(order) == 3
 
 
 # ---------------------------------------------------------------------------
@@ -869,6 +1028,41 @@ class TestPackAndPush:
                 striatum="/usr/bin/striatum",
             )
 
+    def test_finds_artifact_across_dirs(
+        self,
+        skills_root: Path,
+        prompts_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _make_artifact(prompts_root, "my-prompt", kind="Prompt")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+        monkeypatch.setattr("install._run", fake_run)
+
+        pack_and_push(
+            "my-prompt",
+            [skills_root, prompts_root],
+            "localhost:5050/skills",
+            striatum="/usr/bin/striatum",
+        )
+
+        assert len(calls) == 3
+        assert calls[0][1] == "validate"
+
+    def test_missing_across_all_dirs_exits(
+        self, skills_root: Path, prompts_root: Path
+    ) -> None:
+        skills_root.mkdir(parents=True, exist_ok=True)
+        prompts_root.mkdir(parents=True, exist_ok=True)
+        with pytest.raises(SystemExit):
+            pack_and_push(
+                "nonexistent",
+                [skills_root, prompts_root],
+                "localhost:5050/skills",
+                striatum="/usr/bin/striatum",
+            )
+
 
 # ---------------------------------------------------------------------------
 # install_skill
@@ -887,7 +1081,7 @@ class TestInstallSkill:
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
@@ -912,7 +1106,7 @@ class TestInstallSkill:
     ) -> None:
         _make_artifact(skills_root, "my-skill")
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
@@ -933,7 +1127,7 @@ class TestInstallSkill:
     ) -> None:
         _make_artifact(skills_root, "my-skill")
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
@@ -959,7 +1153,7 @@ class TestInstallSkill:
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         install_attempts = 0
@@ -988,7 +1182,7 @@ class TestInstallSkill:
     ) -> None:
         _make_artifact(skills_root, "my-skill")
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
@@ -1005,7 +1199,7 @@ class TestInstallSkill:
     ) -> None:
         _make_artifact(skills_root, "my-skill")
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
@@ -1021,7 +1215,7 @@ class TestInstallSkill:
     ) -> None:
         _make_artifact(skills_root, "my-skill")
         monkeypatch.delenv("STRIATUM_REGISTRY", raising=False)
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         with pytest.raises(SystemExit):
@@ -1047,7 +1241,7 @@ class TestInstallSkill:
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
@@ -1068,6 +1262,44 @@ class TestInstallSkill:
         with pytest.raises(SystemExit):
             install_skill("../escape", targets=["cursor"])
 
+    def test_cross_directory_skill_depends_on_prompt(
+        self,
+        skills_root: Path,
+        prompts_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Skill in skills/ depends on Prompt in prompts/ — the real-world layout."""
+        _make_artifact(prompts_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            prompts_root,
+            "go-review",
+            kind="Prompt",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[_oci_dep("go-review")],
+        )
+
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr(
+            "install._artifact_roots", lambda: [skills_root, prompts_root]
+        )
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_skill("generic-review", targets=["cursor"])
+
+        push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
+        assert len(push_calls) == 3
+
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        assert len(install_calls) == 1
+        assert any("generic-review" in str(arg) for arg in install_calls[0])
+
 
 # ---------------------------------------------------------------------------
 # install_all_skills
@@ -1086,7 +1318,7 @@ class TestInstallAllSkills:
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
@@ -1107,7 +1339,7 @@ class TestInstallAllSkills:
     ) -> None:
         _make_artifact(skills_root, "my-skill")
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
@@ -1129,7 +1361,7 @@ class TestInstallAllSkills:
         empty = tmp_path / "skills"
         empty.mkdir()
         monkeypatch.delenv("STRIATUM_REGISTRY", raising=False)
-        monkeypatch.setattr("install._skills_root", lambda: empty)
+        monkeypatch.setattr("install._artifact_roots", lambda: [empty])
 
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
@@ -1143,7 +1375,7 @@ class TestInstallAllSkills:
     ) -> None:
         _make_artifact(skills_root, "my-skill")
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()
@@ -1171,7 +1403,7 @@ class TestInstallAllSkills:
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         install_attempts = 0
@@ -1212,7 +1444,44 @@ class TestInstallAllSkills:
         )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
-        monkeypatch.setattr("install._skills_root", lambda: skills_root)
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_all_skills(targets=["cursor"])
+
+        push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
+        assert len(push_calls) == 3
+
+        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        assert len(install_calls) == 1
+
+    def test_install_all_across_directories(
+        self,
+        skills_root: Path,
+        prompts_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """install_all_skills discovers and orders artifacts across both directories."""
+        _make_artifact(prompts_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            prompts_root,
+            "go-review",
+            kind="Prompt",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[_oci_dep("go-review")],
+        )
+
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr(
+            "install._artifact_roots", lambda: [skills_root, prompts_root]
+        )
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
 
         calls, fake_run = _fake_run_factory()

@@ -278,7 +278,7 @@ class TestCli:
     def test_cli_success_with_custom_dir(self, tmp_path: Path) -> None:
         _write_skill_md(tmp_path, "valid", _VALID_SKILL)
         result = subprocess.run(
-            [sys.executable, "-m", "skill_content_lint", "--skills-dir", str(tmp_path)],
+            [sys.executable, "-m", "skill_content_lint", "--dir", str(tmp_path)],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).resolve().parent.parent),
@@ -299,7 +299,7 @@ class TestCli:
             """),
         )
         result = subprocess.run(
-            [sys.executable, "-m", "skill_content_lint", "--skills-dir", str(tmp_path)],
+            [sys.executable, "-m", "skill_content_lint", "--dir", str(tmp_path)],
             capture_output=True,
             text=True,
             cwd=str(Path(__file__).resolve().parent.parent),
