@@ -150,7 +150,10 @@ def _set_release_version(repo_root: Path, version: str) -> None:
     _update_pyproject(repo_root, _PYPROJECT_SNAPSHOT, version)
     _update_init_py(repo_root, _PYPROJECT_SNAPSHOT, version)
     _update_test_install(repo_root, _ARTIFACT_SNAPSHOT, version)
-    _update_artifacts(repo_root / "skills", _ARTIFACT_SNAPSHOT, version)
+    for dir_name in ("skills", "prompts"):
+        artifact_dir = repo_root / dir_name
+        if artifact_dir.is_dir():
+            _update_artifacts(artifact_dir, _ARTIFACT_SNAPSHOT, version)
 
 
 def main() -> None:

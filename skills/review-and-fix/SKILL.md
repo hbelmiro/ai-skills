@@ -37,7 +37,7 @@ they should commit—do not commit for them.
    **full** unified diff via **git** per
    `../generic-review/generic-review-checklist.md` (**Diff acquisition**). Route,
    classify findings, use the output template, and apply
-   `../review-shared/review-the-review.md`.
+   `../../prompts/review-shared/review-the-review.md`.
 3. **Decision gate**:
    - If **issues found** → go to step 4.
    - If **no issues** → the workflow is complete; present the clean review

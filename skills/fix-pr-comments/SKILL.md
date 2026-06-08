@@ -86,7 +86,7 @@ they should commit—do not commit for them.
    `../generic-review/generic-review-checklist.md` (**Diff acquisition**—do
    **not** skip this section here; a prior `gh pr diff` may be stale after
    local edits). Route, classify findings, use the output template, and apply
-   `../review-shared/review-the-review.md`. **Fix** every issue you accept;
+   `../../prompts/review-shared/review-the-review.md`. **Fix** every issue you accept;
    re-run tests and linters/typecheck as appropriate, then **repeat** the full
    `generic-review` workflow (steps 1–6 again on an updated git diff) until
    there are **no** remaining issues you agree should block completion—only

@@ -26,7 +26,7 @@ implementation-first or spike-then-test.
 
 - For Phase H, execute the full workflow in `../generic-review/SKILL.md`
   (including routing to language/domain prompts below); that pulls
-  independent-review behavior from `../review-shared/`.
+  independent-review behavior from `../../prompts/review-shared/`.
 - For phases A-G, use `scenario-coverage.md` prompts (especially
   "Assumption challenge") to avoid self-confirming coverage.
 

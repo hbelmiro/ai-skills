@@ -54,7 +54,7 @@ Execute in order unless a step is not applicable (state N/A with reason).
       `gh pr diff`.
 - [ ] Treat the pass as **independent review** (not only re-checking PR
       threads); apply routing, severity, output template, and
-      `../review-shared/review-the-review.md`.
+      `../../prompts/review-shared/review-the-review.md`.
 - [ ] **Fix** accepted findings; re-run tests/static checks; **repeat** the full
       generic-review workflow until nothing you accept still blocks completion.
 

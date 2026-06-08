@@ -13,7 +13,7 @@ from pathlib import Path
 
 from utils.subprocess import run as _run
 
-_SKILLS_DIR_NAME = "skills"
+_ARTIFACT_DIR_NAMES = ("skills", "prompts")
 _ARTIFACT_JSON = "artifact.json"
 _STRIATUM_BUILD_DIR = "build"
 _SKILL_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
@@ -47,8 +47,9 @@ def _repo_root() -> Path:
     return Path(__file__).resolve().parent.parent
 
 
-def _skills_root() -> Path:
-    return _repo_root() / _SKILLS_DIR_NAME
+def _artifact_roots() -> list[Path]:
+    root = _repo_root()
+    return [root / name for name in _ARTIFACT_DIR_NAMES]
 
 
 def _validate_skill_name(name: str) -> None:
@@ -201,7 +202,31 @@ def _available_skills(skills_root: Path) -> list[str]:
     )
 
 
-def _ordered_skills_postorder(roots: list[str], skills_root: Path) -> list[str]:
+def _available_artifacts(artifact_dirs: Sequence[Path]) -> list[str]:
+    """List all artifact names across *artifact_dirs*, sorted and deduplicated."""
+    seen: set[str] = set()
+    for root in artifact_dirs:
+        seen.update(_available_skills(root))
+    return sorted(seen)
+
+
+def _find_artifact_dir(name: str, artifact_dirs: Sequence[Path]) -> Path:
+    """Locate the directory for artifact *name* across *artifact_dirs*."""
+    for root in artifact_dirs:
+        candidate = root / name
+        if candidate.is_dir() and (candidate / _ARTIFACT_JSON).is_file():
+            return candidate
+    available = _available_artifacts(artifact_dirs)
+    msg = f"error: artifact '{name}' not found"
+    if available:
+        msg += f"\navailable artifacts: {', '.join(available)}"
+    print(msg, file=sys.stderr)
+    raise SystemExit(1)
+
+
+def _ordered_skills_postorder(
+    roots: list[str], artifact_dirs: Sequence[Path]
+) -> list[str]:
     """Dependency order for *roots*: each skill once, dependencies before dependents."""
     ordered: list[str] = []
     visited: set[str] = set()
@@ -214,11 +239,11 @@ def _ordered_skills_postorder(roots: list[str], skills_root: Path) -> list[str]:
             print(f"error: dependency cycle detected: {skill}", file=sys.stderr)
             raise SystemExit(1)
         in_progress.add(skill)
-        skill_dir = skills_root / skill
+        skill_dir = _find_artifact_dir(skill, artifact_dirs)
         for dep in _read_dependencies(skill_dir):
             dep_name = dep["repository"]
             _validate_skill_name(dep_name)
-            dep_dir = skills_root / dep_name
+            dep_dir = _find_artifact_dir(dep_name, artifact_dirs)
             actual_version = _read_artifact_version(dep_dir)
             declared_version = dep["tag"]
             if actual_version != declared_version:
@@ -238,29 +263,27 @@ def _ordered_skills_postorder(roots: list[str], skills_root: Path) -> list[str]:
     return ordered
 
 
-def _resolve_all_deps(skill_name: str, skills_root: Path) -> list[str]:
+def _resolve_all_deps(skill_name: str, artifact_dirs: Sequence[Path]) -> list[str]:
     """Topologically resolve transitive dependencies (leaves first)."""
-    return _ordered_skills_postorder([skill_name], skills_root)
+    return _ordered_skills_postorder([skill_name], artifact_dirs)
 
 
-def _global_install_order(skills_root: Path) -> list[str]:
-    """Topological order of every skill under *skills_root* (dependencies before dependents)."""
-    return _ordered_skills_postorder(_available_skills(skills_root), skills_root)
+def _global_install_order(artifact_dirs: Sequence[Path]) -> list[str]:
+    """Topological order of every artifact under *artifact_dirs* (dependencies before dependents)."""
+    return _ordered_skills_postorder(_available_artifacts(artifact_dirs), artifact_dirs)
 
 
 def pack_and_push(
-    skill_name: str, skills_root: Path, registry: str, *, striatum: str
+    skill_name: str,
+    artifact_dirs: Path | Sequence[Path],
+    registry: str,
+    *,
+    striatum: str,
 ) -> None:
     """Pack a skill and push it to the registry."""
     _validate_skill_name(skill_name)
-    skill_dir = skills_root / skill_name
-    if not skill_dir.is_dir():
-        available = _available_skills(skills_root)
-        msg = f"error: skill '{skill_name}' not found under {skills_root}"
-        if available:
-            msg += f"\navailable skills: {', '.join(available)}"
-        print(msg, file=sys.stderr)
-        raise SystemExit(1)
+    dirs = [artifact_dirs] if isinstance(artifact_dirs, Path) else list(artifact_dirs)
+    skill_dir = _find_artifact_dir(skill_name, dirs)
 
     version = _read_artifact_version(skill_dir)
     name = _read_artifact_name(skill_dir)
@@ -287,18 +310,18 @@ def pack_and_push(
 
 def _pack_push_ordered(
     names: list[str],
-    skills_root: Path,
+    artifact_dirs: Sequence[Path],
     registry: str,
     *,
     striatum: str,
 ) -> None:
     for name in names:
-        pack_and_push(name, skills_root, registry, striatum=striatum)
+        pack_and_push(name, artifact_dirs, registry, striatum=striatum)
 
 
 def _install_ordered_skills(
     names: list[str],
-    skills_root: Path,
+    artifact_dirs: Sequence[Path],
     registry: str,
     *,
     striatum: str,
@@ -307,12 +330,14 @@ def _install_ordered_skills(
     force: bool = False,
 ) -> None:
     skills_only = [
-        name for name in names if _read_artifact_kind(skills_root / name) == "Skill"
+        name
+        for name in names
+        if _read_artifact_kind(_find_artifact_dir(name, artifact_dirs)) == "Skill"
     ]
     n = len(skills_only)
     installed_ok: list[str] = []
     for i, name in enumerate(skills_only, start=1):
-        skill_dir = skills_root / name
+        skill_dir = _find_artifact_dir(name, artifact_dirs)
         version = _read_artifact_version(skill_dir)
         artifact_name = _read_artifact_name(skill_dir)
         ref = _reference(registry, artifact_name, version)
@@ -356,17 +381,17 @@ def install_skill(
     _validate_skill_name(skill_name)
     _validate_targets(targets)
     unique_targets = _dedupe_targets(targets)
-    skills_root = _skills_root()
+    artifact_dirs = _artifact_roots()
     registry = _registry()
     striatum = _find_striatum()
 
-    all_skills = _resolve_all_deps(skill_name, skills_root)
+    all_skills = _resolve_all_deps(skill_name, artifact_dirs)
 
-    _pack_push_ordered(all_skills, skills_root, registry, striatum=striatum)
+    _pack_push_ordered(all_skills, artifact_dirs, registry, striatum=striatum)
     for t in unique_targets:
         _install_ordered_skills(
             all_skills,
-            skills_root,
+            artifact_dirs,
             registry,
             striatum=striatum,
             install_target=t,
@@ -381,22 +406,22 @@ def install_all_skills(
     project: str | None = None,
     force: bool = False,
 ) -> None:
-    """Pack, push, and install every skill under ``skills/`` (each once, dependency order)."""
+    """Pack, push, and install every artifact (each once, dependency order)."""
     _validate_targets(targets)
     unique_targets = _dedupe_targets(targets)
-    skills_root = _skills_root()
-    order = _global_install_order(skills_root)
+    artifact_dirs = _artifact_roots()
+    order = _global_install_order(artifact_dirs)
     if not order:
         return
 
     registry = _registry()
     striatum = _find_striatum()
 
-    _pack_push_ordered(order, skills_root, registry, striatum=striatum)
+    _pack_push_ordered(order, artifact_dirs, registry, striatum=striatum)
     for t in unique_targets:
         _install_ordered_skills(
             order,
-            skills_root,
+            artifact_dirs,
             registry,
             striatum=striatum,
             install_target=t,
@@ -494,7 +519,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--install-all",
         action="store_true",
-        help="Pack, push, and install every skill in this repository's skills/ directory",
+        help="Pack, push, and install every artifact in this repository's skills/ and prompts/ directories",
     )
     return parser
 

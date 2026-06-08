@@ -5,7 +5,8 @@ A collection of AI skills and projects organized in a single repository.
 ## Structure
 
 - `src/` - Main package source code and shared utilities
-- `skills/` - Individual AI skills and projects
+- `skills/` - AI skills (kind: Skill)
+- `prompts/` - AI prompts (kind: Prompt)
 
 ## Skill Structure
 
@@ -84,7 +85,7 @@ uv run python src/install.py --target cursor --personal --uninstall --skill go-c
 # Force-replace conflicting versions
 STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --personal --force --skill go-code-review
 
-# Install every skill under skills/ (each once, dependency order)
+# Install every artifact under skills/ and prompts/ (each once, dependency order)
 STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --personal --install-all
 
 # Same for a specific project
@@ -101,7 +102,7 @@ Run `uv run python src/install.py --help` for full usage.
 
 ## Adding a New Skill
 
-1. Create a new directory under `skills/`
+1. Create a new directory under `skills/` (for kind: Skill) or `prompts/` (for kind: Prompt)
 2. Use lowercase with hyphens for directory names (e.g., `go-code-review`, `python-code-review`)
 3. Add a README.md with project description and setup instructions
 4. Include any necessary configuration files

@@ -16,7 +16,7 @@ Execute in order unless a step is not applicable (state N/A with reason).
       **current** tree using a **git**-based full diff (see **Diff acquisition**
       in `../generic-review/generic-review-checklist.md`).
 - [ ] Treat the pass as **independent review**; apply routing, severity, output
-      template, and `../review-shared/review-the-review.md`.
+      template, and `../../prompts/review-shared/review-the-review.md`.
 
 ## 2. Decision gate
 
