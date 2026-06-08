@@ -85,7 +85,7 @@ uv run python src/install.py --target cursor --personal --uninstall --skill go-c
 # Force-replace conflicting versions
 STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --personal --force --skill go-code-review
 
-# Install every artifact under skills/ and prompts/ (each once, dependency order)
+# Pack and push all artifacts; install only Skills (dependency order)
 STRIATUM_REGISTRY=localhost:5050/skills uv run python src/install.py --target cursor --personal --install-all
 
 # Same for a specific project

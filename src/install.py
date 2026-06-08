@@ -224,10 +224,10 @@ def _find_artifact_dir(name: str, artifact_dirs: Sequence[Path]) -> Path:
     raise SystemExit(1)
 
 
-def _ordered_skills_postorder(
+def _ordered_artifacts_postorder(
     roots: list[str], artifact_dirs: Sequence[Path]
 ) -> list[str]:
-    """Dependency order for *roots*: each skill once, dependencies before dependents."""
+    """Dependency order for *roots*: each artifact once, dependencies before dependents."""
     ordered: list[str] = []
     visited: set[str] = set()
     in_progress: set[str] = set()
@@ -265,12 +265,14 @@ def _ordered_skills_postorder(
 
 def _resolve_all_deps(skill_name: str, artifact_dirs: Sequence[Path]) -> list[str]:
     """Topologically resolve transitive dependencies (leaves first)."""
-    return _ordered_skills_postorder([skill_name], artifact_dirs)
+    return _ordered_artifacts_postorder([skill_name], artifact_dirs)
 
 
 def _global_install_order(artifact_dirs: Sequence[Path]) -> list[str]:
     """Topological order of every artifact under *artifact_dirs* (dependencies before dependents)."""
-    return _ordered_skills_postorder(_available_artifacts(artifact_dirs), artifact_dirs)
+    return _ordered_artifacts_postorder(
+        _available_artifacts(artifact_dirs), artifact_dirs
+    )
 
 
 def pack_and_push(
@@ -280,7 +282,7 @@ def pack_and_push(
     *,
     striatum: str,
 ) -> None:
-    """Pack a skill and push it to the registry."""
+    """Pack an artifact (Skill or Prompt) and push it to the registry."""
     _validate_skill_name(skill_name)
     dirs = [artifact_dirs] if isinstance(artifact_dirs, Path) else list(artifact_dirs)
     skill_dir = _find_artifact_dir(skill_name, dirs)
@@ -406,7 +408,7 @@ def install_all_skills(
     project: str | None = None,
     force: bool = False,
 ) -> None:
-    """Pack, push, and install every artifact (each once, dependency order)."""
+    """Pack and push every artifact; install only Skills (dependency order)."""
     _validate_targets(targets)
     unique_targets = _dedupe_targets(targets)
     artifact_dirs = _artifact_roots()
@@ -519,7 +521,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--install-all",
         action="store_true",
-        help="Pack, push, and install every artifact in this repository's skills/ and prompts/ directories",
+        help="Pack and push all artifacts in skills/ and prompts/; install only Skills",
     )
     return parser
 

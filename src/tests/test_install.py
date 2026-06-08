@@ -1495,7 +1495,6 @@ class TestInstallAllSkills:
         install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
         assert len(install_calls) == 1
         assert any("generic-review" in str(arg) for arg in install_calls[0])
-        assert any("generic-review" in str(arg) for arg in install_calls[0])
 
 
 # ---------------------------------------------------------------------------
