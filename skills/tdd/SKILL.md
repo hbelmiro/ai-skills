@@ -24,10 +24,10 @@ implementation-first or spike-then-test.
 
 ## Reviewer stance
 
-- For Phase H, execute the full workflow in `../generic-review/SKILL.md`
+- For Phase H, execute the full workflow in [`../generic-review/SKILL.md`](../generic-review/SKILL.md)
   (including routing to language/domain prompts below); that pulls
-  independent-review behavior from `../../prompts/review-shared/`.
-- For phases A-G, use `scenario-coverage.md` prompts (especially
+  independent-review behavior from [`../../prompts/review-shared/`](../../prompts/review-shared/).
+- For phases A-G, use [`scenario-coverage.md`](scenario-coverage.md) prompts (especially
   "Assumption challenge") to avoid self-confirming coverage.
 
 ## Operating principles
@@ -93,7 +93,7 @@ Consolidation can **drop a distinct equivalence class** or hide a gap. Immediate
 
 After Phase F → G is settled, **review** the change set as the final gate before completion.
 
-1. Run `../generic-review/SKILL.md` § **Review workflow** (steps 1–6), in
+1. Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) § **Review workflow** (steps 1–6), in
    order, as an independent reviewer—do not skip routing or
    review-the-review.
 2. **Fix** all issues you accept; re-run tests and linters/typecheck as

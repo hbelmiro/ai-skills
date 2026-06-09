@@ -25,21 +25,21 @@ When the overall task **started with pr-review**, this skill’s step 6 is **not
 
 Before the workflow below, you must have:
 
-- The **full unified diff** for the change under review (every touched file), unless you are about to obtain it via `generic-review-checklist.md`.
+- The **full unified diff** for the change under review (every touched file), unless you are about to obtain it via [`generic-review-checklist.md`](generic-review-checklist.md).
 - Enough context to route (changed paths, repo signals such as `go.mod` / `pyproject.toml`).
 
 ## Review workflow
 
-1. Read `../../prompts/review-shared/general-review-requirements.md` and apply all requirements.
-2. Read `generic-review-checklist.md` and execute every check (honor the skip rule above when continuing from `pr-review`).
+1. Read [`../../prompts/review-shared/general-review-requirements.md`](../../prompts/review-shared/general-review-requirements.md) and apply all requirements.
+2. Read [`generic-review-checklist.md`](generic-review-checklist.md) and execute every check (honor the skip rule above when continuing from `pr-review`).
 3. Route to the correct specialized review prompt:
-   - If project/repo context indicates Kubeflow Pipelines or Data Science Pipelines, apply `../../prompts/kubeflow-pipelines-code-review/PROMPT.md`.
+   - If project/repo context indicates Kubeflow Pipelines or Data Science Pipelines, apply [`../../prompts/kubeflow-pipelines-code-review/PROMPT.md`](../../prompts/kubeflow-pipelines-code-review/PROMPT.md).
    - Otherwise infer languages used by the project and apply matching language prompts:
-     - Go: `../../prompts/go-code-review/PROMPT.md`
-     - Python: `../../prompts/python-code-review/PROMPT.md`
-4. Classify findings with `../../prompts/review-shared/severity-rubric.md`.
-5. Present results using `../../prompts/review-shared/output-template.md`.
-6. Read `../../prompts/review-shared/review-the-review.md` and apply it to your completed review. Fix any issues in-place before presenting.
+     - Go: [`../../prompts/go-code-review/PROMPT.md`](../../prompts/go-code-review/PROMPT.md)
+     - Python: [`../../prompts/python-code-review/PROMPT.md`](../../prompts/python-code-review/PROMPT.md)
+4. Classify findings with [`../../prompts/review-shared/severity-rubric.md`](../../prompts/review-shared/severity-rubric.md).
+5. Present results using [`../../prompts/review-shared/output-template.md`](../../prompts/review-shared/output-template.md).
+6. Read [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md) and apply it to your completed review. Fix any issues in-place before presenting.
 
 ## Routing rules
 

@@ -31,18 +31,18 @@ they should commit—do not commit for them.
 
 ## Workflow
 
-1. Read `review-and-fix-checklist.md` and execute it in order.
-2. **Review (fresh eyes)**: Run `../generic-review/SKILL.md` § **Review
+1. Read [`review-and-fix-checklist.md`](review-and-fix-checklist.md) and execute it in order.
+2. **Review (fresh eyes)**: Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) § **Review
    workflow** (steps 1–6), in order, as an independent reviewer. Obtain the
    **full** unified diff via **git** per
-   `../generic-review/generic-review-checklist.md` (**Diff acquisition**). Route,
+   [`../generic-review/generic-review-checklist.md`](../generic-review/generic-review-checklist.md) (**Diff acquisition**). Route,
    classify findings, use the output template, and apply
-   `../../prompts/review-shared/review-the-review.md`.
+   [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md).
 3. **Decision gate**:
    - If **issues found** → go to step 4.
    - If **no issues** → the workflow is complete; present the clean review
      output to the user.
-4. **Fix**: Fix all accepted findings. Use `../tdd/SKILL.md` (phases A–G) when
+4. **Fix**: Fix all accepted findings. Use [`../tdd/SKILL.md`](../tdd/SKILL.md) (phases A–G) when
    behavior or coverage is in play; direct edit plus project tests/lint is
    enough for purely mechanical nits (typo, rename, comment-only) with no
    behavioral contract change. Re-run tests and linters/typecheck as

@@ -10,7 +10,7 @@ Execute in order unless a step is not applicable (state N/A with reason).
 
 ## 1. Review
 
-- [ ] Run `../pr-review/SKILL.md` with the provided PR URL.
+- [ ] Run [`../pr-review/SKILL.md`](../pr-review/SKILL.md) with the provided PR URL.
 - [ ] Let `pr-review` handle all phases: PR context collection, full diff via
       `gh`, comment-thread validation, delegation to `generic-review`, and
       Phase 2 duplicate suppression.

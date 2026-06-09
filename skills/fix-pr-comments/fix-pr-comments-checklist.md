@@ -17,7 +17,7 @@ Execute in order unless a step is not applicable (state N/A with reason).
 
 ## 2. Collect review data
 
-- [ ] Run **Phase 1** of `../pr-review/pr-review-checklist.md` (PR context JSON,
+- [ ] Run **Phase 1** of [`../pr-review/pr-review-checklist.md`](../pr-review/pr-review-checklist.md) (PR context JSON,
       full diff, comments and inline threads, extra `gh api` when needed).
 - [ ] Keep a **master list** of actionable items (inline comments, review
       bodies, issue comments—including CodeRabbit and similar bots).
@@ -41,20 +41,20 @@ Execute in order unless a step is not applicable (state N/A with reason).
       Otherwise **stop** and instruct the user to check out the PR head (for
       example `gh pr checkout <url>`) and try again.
 - [ ] For each item: fix, skip (with reason), or defer (with reason).
-- [ ] Apply **TDD** per `../tdd/SKILL.md` when behavior or coverage is in play;
+- [ ] Apply **TDD** per [`../tdd/SKILL.md`](../tdd/SKILL.md) when behavior or coverage is in play;
       skip full TDD only for clearly non-behavioral nits.
 - [ ] Run tests and appropriate static checks after substantive edits.
 
 ## 4. Pre-summary generic-review (fresh eyes)
 
-- [ ] Run `../generic-review/SKILL.md` **Review workflow** (steps 1–6) on the
+- [ ] Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) **Review workflow** (steps 1–6) on the
       **current** tree using a **git**-based full diff (see **Diff acquisition**
-      in `../generic-review/generic-review-checklist.md`); do not skip diff
+      in [`../generic-review/generic-review-checklist.md`](../generic-review/generic-review-checklist.md)); do not skip diff
       acquisition because local edits may have diverged from an earlier
       `gh pr diff`.
 - [ ] Treat the pass as **independent review** (not only re-checking PR
       threads); apply routing, severity, output template, and
-      `../../prompts/review-shared/review-the-review.md`.
+      [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md).
 - [ ] **Fix** accepted findings; re-run tests/static checks; **repeat** the full
       generic-review workflow until nothing you accept still blocks completion.
 

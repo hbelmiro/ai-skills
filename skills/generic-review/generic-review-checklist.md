@@ -23,7 +23,7 @@ Skip this section when the full diff was already obtained (including via `pr-rev
 
 ## Discussion resolution check
 
-- If there are prior review comments, issues, or design threads relevant to this change, verify whether concerns were addressed in code (per `general-review-requirements.md`).
+- If there are prior review comments, issues, or design threads relevant to this change, verify whether concerns were addressed in code (per [`general-review-requirements.md`](../../prompts/review-shared/general-review-requirements.md)).
 - If there are **no** such threads (typical for local-only review), state that explicitly in the output template **Discussion Resolution Check** section (e.g. no PR/issue discussion to validate).
 
 ## Risk and test sufficiency

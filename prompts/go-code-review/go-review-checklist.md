@@ -11,7 +11,7 @@ This step is best-effort; if the tool is missing, note the gap and continue with
 - Check availability: `which golangci-lint`. If unavailable, record "golangci-lint: not available — skipped" in the review output's Coverage Check and proceed.
 - Run: `golangci-lint run ./...` from the module root. If a config file exists (`.golangci.yml`, `.golangci.yaml`, or `.golangci.toml`), golangci-lint picks it up automatically.
 - **Diff-scope filter:** Only report findings on files and lines touched by the change under review. Cross-reference linter output against the diff. Discard findings on unchanged lines.
-- **Severity mapping:** Classify each diff-scoped finding using the severity rubric (`../review-shared/severity-rubric.md`). Guidance:
+- **Severity mapping:** Classify each diff-scoped finding using the severity rubric ([`../review-shared/severity-rubric.md`](../review-shared/severity-rubric.md)). Guidance:
   - Correctness linters (`govet`, `staticcheck`, `typecheck`): typically High or Critical.
   - Error-handling linters (`errcheck`): typically High.
   - Style and formatting linters (`revive`, `gofmt`, `goimports`, `misspell`): typically Low.

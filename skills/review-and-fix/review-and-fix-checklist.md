@@ -12,11 +12,11 @@ Execute in order unless a step is not applicable (state N/A with reason).
 
 ## 1. Review (fresh eyes)
 
-- [ ] Run `../generic-review/SKILL.md` **Review workflow** (steps 1–6) on the
+- [ ] Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) **Review workflow** (steps 1–6) on the
       **current** tree using a **git**-based full diff (see **Diff acquisition**
-      in `../generic-review/generic-review-checklist.md`).
+      in [`../generic-review/generic-review-checklist.md`](../generic-review/generic-review-checklist.md)).
 - [ ] Treat the pass as **independent review**; apply routing, severity, output
-      template, and `../../prompts/review-shared/review-the-review.md`.
+      template, and [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md).
 
 ## 2. Decision gate
 
@@ -27,7 +27,7 @@ Execute in order unless a step is not applicable (state N/A with reason).
 ## 3. Fix and loop
 
 - [ ] **Fix** every accepted finding.
-- [ ] Apply **TDD** per `../tdd/SKILL.md` (phases A–G) when behavior or
+- [ ] Apply **TDD** per [`../tdd/SKILL.md`](../tdd/SKILL.md) (phases A–G) when behavior or
       coverage is in play; skip full TDD only for clearly non-behavioral nits.
 - [ ] Re-run tests and appropriate static checks after substantive edits.
 - [ ] **Return to step 1** with a fresh git diff; repeat until the review

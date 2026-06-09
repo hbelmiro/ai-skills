@@ -56,7 +56,7 @@ Apply these requirements to every review, regardless of language or component.
     references such as comments, docs, and build configs).
 - For **renamed, moved, or deleted** files, search the diff and
   surrounding codebase for references that now point to a stale path.
-- External URLs (https://…) in added or changed lines: flag any that
+- External URLs (`https://…`) in added or changed lines: flag any that
   are clearly malformed or point to known-dead domains. Full
   reachability testing is not required, but obviously broken URLs
   should be called out.

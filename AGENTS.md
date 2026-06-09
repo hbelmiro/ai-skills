@@ -129,6 +129,11 @@ Dependency source: `skills/*/artifact.json` and `prompts/*/artifact.json`
   `# type: ignore[...]` comments to silence type-checking errors. Fix the
   underlying type issue instead (e.g. use explicit narrowing helpers like
   `_as_json_object` to convert untyped data to properly-typed structures).
+- **Use markdown links for cross-file references.** In skill and prompt
+  `.md` files, always use markdown link syntax
+  `` [`path`](path) `` for references to other files — never bare backtick
+  paths (`` `path` ``). The `lint-links` CI job (lychee) validates that all
+  links resolve; bare backtick paths are invisible to it.
 
 ## Agent Guidelines
 
