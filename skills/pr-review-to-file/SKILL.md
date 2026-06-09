@@ -29,8 +29,8 @@ pushes.
 
 ## Workflow
 
-1. Read `pr-review-to-file-checklist.md` and execute it in order.
-2. **Review**: Run `../pr-review/SKILL.md` with the provided PR URL. Let
+1. Read [`pr-review-to-file-checklist.md`](pr-review-to-file-checklist.md) and execute it in order.
+2. **Review**: Run [`../pr-review/SKILL.md`](../pr-review/SKILL.md) with the provided PR URL. Let
    `pr-review` handle all PR context collection, diff acquisition, comment
    validation, and delegation to `generic-review`.
 3. **Save review**: Resolve the working tree root with

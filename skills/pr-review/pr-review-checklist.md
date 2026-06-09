@@ -17,7 +17,7 @@ Apply every check explicitly. **Phase 1** runs before delegating to `generic-rev
 - Ensure the diff includes every changed file; pass this full diff to
   `generic-review` for risk analysis and findings.
 - Ensure mandatory full-diff inspection is executed in
-  `generic-review-checklist.md`; do not skip that review step.
+  [`generic-review-checklist.md`](../generic-review/generic-review-checklist.md); do not skip that review step.
 
 ### Comment Resolution Validation
 
@@ -28,7 +28,7 @@ Apply every check explicitly. **Phase 1** runs before delegating to `generic-rev
 
 ### Output order (PR reviews)
 
-- The final written review MUST follow `../../prompts/review-shared/output-template.md` section order. For PR URLs, the **Pull request context** block (title, link, full PR **body**, base/head, author) MUST appear **first**, before **GitHub Review Comments** (numbered findings).
+- The final written review MUST follow [`../../prompts/review-shared/output-template.md`](../../prompts/review-shared/output-template.md) section order. For PR URLs, the **Pull request context** block (title, link, full PR **body**, base/head, author) MUST appear **first**, before **GitHub Review Comments** (numbered findings).
 
 ## Phase 2 — After generic-review output
 

@@ -36,9 +36,9 @@ they should commit—do not commit for them.
 
 ## Workflow
 
-1. Read `fix-pr-comments-checklist.md` and execute it in order.
+1. Read [`fix-pr-comments-checklist.md`](fix-pr-comments-checklist.md) and execute it in order.
 2. For **PR context and comment threads**, follow **Phase 1** of
-   `../pr-review/pr-review-checklist.md` (context JSON, `gh pr diff`, issue and
+   [`../pr-review/pr-review-checklist.md`](../pr-review/pr-review-checklist.md) (context JSON, `gh pr diff`, issue and
    inline review comments, `gh api` when thread detail requires it). Treat
    **CodeRabbit** and other bots like any other reviewer for triage.
 3. **Local branch**: **Do not** check out the PR automatically.
@@ -67,7 +67,7 @@ they should commit—do not commit for them.
 4. **Triage every thread** (and any review summary bullets worth acting on):
    decide fix vs skip vs defer. Skips and deferrals need a one-line rationale
    for the closing summary.
-5. **TDD** (`../tdd/SKILL.md`): Use for new or changed behavior, new edge cases,
+5. **TDD** ([`../tdd/SKILL.md`](../tdd/SKILL.md)): Use for new or changed behavior, new edge cases,
    bug fixes that need regression tests, or refactors where tests should lock
    behavior. Follow phases **A–G** as appropriate for the slice of work; use
    **Phase H** when the change set is non-trivial. **Step 7** below is still
@@ -79,14 +79,14 @@ they should commit—do not commit for them.
    linters/typecheck for the repo; leave the working tree in a shippable state
    (still **no** commit or push—see **Git and remotes** above).
 7. **Pre-summary `generic-review` (required)**: Before presenting the PR-comment
-   summary, perform a **fresh-eyes** pass using `../generic-review/SKILL.md` §
+   summary, perform a **fresh-eyes** pass using [`../generic-review/SKILL.md`](../generic-review/SKILL.md) §
    **Review workflow** (steps 1–6), in order, as an independent reviewer—do
    not limit attention to the original threads. Use the **current** change set:
    obtain the **full** unified diff via **git** per
-   `../generic-review/generic-review-checklist.md` (**Diff acquisition**—do
+   [`../generic-review/generic-review-checklist.md`](../generic-review/generic-review-checklist.md) (**Diff acquisition**—do
    **not** skip this section here; a prior `gh pr diff` may be stale after
    local edits). Route, classify findings, use the output template, and apply
-   `../../prompts/review-shared/review-the-review.md`. **Fix** every issue you accept;
+   [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md). **Fix** every issue you accept;
    re-run tests and linters/typecheck as appropriate, then **repeat** the full
    `generic-review` workflow (steps 1–6 again on an updated git diff) until
    there are **no** remaining issues you agree should block completion—only
@@ -100,7 +100,7 @@ they should commit—do not commit for them.
 ## Relationship to other skills
 
 - **`pr-review`**: Declared as a **direct** dependency (alongside `tdd`) so
-  `../pr-review/` checklists are installed; it owns how to **collect** PR
+  [`../pr-review/`](../pr-review/) checklists are installed; it owns how to **collect** PR
   metadata and threads—do not duplicate those `gh` steps—use its Phase 1
   checklist.
 - **`tdd`**: Owns **how** to implement with tests-first and scenario gates when
