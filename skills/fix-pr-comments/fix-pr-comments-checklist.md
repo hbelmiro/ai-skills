@@ -47,13 +47,13 @@ Execute in order unless a step is not applicable (state N/A with reason).
 
 ## 4. Pre-summary generic-review (fresh eyes)
 
-- [ ] Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) **Review workflow** (steps 1–6) on the
+- [ ] Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) **Review workflow** (steps 1–5) on the
       **current** tree using a **git**-based full diff (see **Diff acquisition**
       in [`../generic-review/generic-review-checklist.md`](../generic-review/generic-review-checklist.md)); do not skip diff
       acquisition because local edits may have diverged from an earlier
       `gh pr diff`.
 - [ ] Treat the pass as **independent review** (not only re-checking PR
-      threads); apply routing, severity, output template, and
+      threads); apply routing, output template, and
       [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md).
 - [ ] **Fix** accepted findings; re-run tests/static checks; **repeat** the full
       generic-review workflow until nothing you accept still blocks completion.

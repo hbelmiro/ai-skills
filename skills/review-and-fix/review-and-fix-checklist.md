@@ -12,10 +12,10 @@ Execute in order unless a step is not applicable (state N/A with reason).
 
 ## 1. Review (fresh eyes)
 
-- [ ] Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) **Review workflow** (steps 1–6) on the
+- [ ] Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) **Review workflow** (steps 1–5) on the
       **current** tree using a **git**-based full diff (see **Diff acquisition**
       in [`../generic-review/generic-review-checklist.md`](../generic-review/generic-review-checklist.md)).
-- [ ] Treat the pass as **independent review**; apply routing, severity, output
+- [ ] Treat the pass as **independent review**; apply routing, output
       template, and [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md).
 
 ## 2. Decision gate

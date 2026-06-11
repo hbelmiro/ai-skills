@@ -80,15 +80,15 @@ they should commit—do not commit for them.
    (still **no** commit or push—see **Git and remotes** above).
 7. **Pre-summary `generic-review` (required)**: Before presenting the PR-comment
    summary, perform a **fresh-eyes** pass using [`../generic-review/SKILL.md`](../generic-review/SKILL.md) §
-   **Review workflow** (steps 1–6), in order, as an independent reviewer—do
+   **Review workflow** (steps 1–5), in order, as an independent reviewer—do
    not limit attention to the original threads. Use the **current** change set:
    obtain the **full** unified diff via **git** per
    [`../generic-review/generic-review-checklist.md`](../generic-review/generic-review-checklist.md) (**Diff acquisition**—do
    **not** skip this section here; a prior `gh pr diff` may be stale after
-   local edits). Route, classify findings, use the output template, and apply
+   local edits). Route, use the output template, and apply
    [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md). **Fix** every issue you accept;
    re-run tests and linters/typecheck as appropriate, then **repeat** the full
-   `generic-review` workflow (steps 1–6 again on an updated git diff) until
+   `generic-review` workflow (steps 1–5 again on an updated git diff) until
    there are **no** remaining issues you agree should block completion—only
    then proceed to the summary.
 8. **Closing summary (required)**: List **each** collected comment or actionable

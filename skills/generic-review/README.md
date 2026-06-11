@@ -1,6 +1,6 @@
 # generic-review
 
-Shared code-review workflow for any change set: obtain (or reuse) a full diff, apply general requirements, route to Kubeflow Pipelines or language-specific skills, classify severity, and format output.
+Shared code-review workflow for any change set: obtain (or reuse) a full diff, apply general requirements, route to Kubeflow Pipelines or language-specific skills, and format output.
 
 ## When to use
 

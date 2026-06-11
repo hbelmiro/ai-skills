@@ -22,7 +22,7 @@ This file tracks AI agents and skills within the monorepo.
   control-plane rules.
 - `generic-review` (Code Review, Active) in `skills/generic-review/`
   Full-diff review without a PR URL, with shared requirements, routing,
-  severity, output template, and review-of-review validation.
+  output template, and review-of-review validation.
 - `pr-review` (Code Review, Active) in `skills/pr-review/`
   PR URL review with gh context and comment validation, then delegation
   to generic review.
@@ -41,11 +41,16 @@ This file tracks AI agents and skills within the monorepo.
   `skills/pr-review-to-file/`
   Run `pr-review` for a PR URL and save the review output to
   `<project>/.hbelmiro/reviews/`; does not commit or push.
+- `thorough-review` (Code Review, Active) in
+  `workflows/thorough-review/`
+  Parallel fan-out review with adversarial verification: Go, Python,
+  and generic reviewers run concurrently; a skeptic agent verifies each
+  finding; survivors are merged and formatted.
 
 ## Skill Dependency Graph (`artifact.json`)
 
-Dependency source: `skills/*/artifact.json` and `prompts/*/artifact.json`
-(`dependencies` field).
+Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
+and `workflows/*/artifact.json` (`dependencies` field).
 
 - `review-shared` (base; no dependencies)
 - `go-code-review` -> `review-shared`
@@ -59,6 +64,8 @@ Dependency source: `skills/*/artifact.json` and `prompts/*/artifact.json`
 - `tdd` -> `generic-review`
 - `fix-pr-comments` -> `tdd`, `pr-review`
 - `review-and-fix` -> `tdd`, `generic-review`
+- `thorough-review` ->
+  `review-shared`, `go-code-review`, `python-code-review`
 - `pr-review-to-file` -> `pr-review`
 
 ### Dependency Layers
@@ -66,7 +73,8 @@ Dependency source: `skills/*/artifact.json` and `prompts/*/artifact.json`
 - **Layer 0 (foundation):** `review-shared`
 - **Layer 1 (language):** `go-code-review`, `python-code-review`
 - **Layer 2 (domain orchestration):**
-  `kubeflow-pipelines-code-review`, `generic-review`
+  `kubeflow-pipelines-code-review`, `generic-review`,
+  `thorough-review`
 - **Layer 3 (entry workflows):** `pr-review`, `tdd`
 - **Layer 4 (fix workflows):** `fix-pr-comments`, `review-and-fix`,
   `pr-review-to-file`
@@ -85,8 +93,8 @@ Dependency source: `skills/*/artifact.json` and `prompts/*/artifact.json`
 
 - This is a **strict policy**. PRs must fix violations before merge.
 - `review-shared` owns:
-  independent reviewer mode, severity rubric, output template, and
-  review-the-review criteria.
+  independent reviewer mode, output template, and review-the-review
+  criteria.
 - `generic-review` owns:
   full-diff local-review flow, routing rules, and shared risk/test checks.
 - `go-code-review` and `python-code-review` own:
@@ -113,12 +121,17 @@ Dependency source: `skills/*/artifact.json` and `prompts/*/artifact.json`
   (gh context, comment validation, generic-review pipeline); save the
   review to `<project>/.hbelmiro/reviews/`; **never** commit or push (user
   owns git history and remotes).
+- `thorough-review` owns:
+  parallel fan-out orchestration and adversarial verification;
+  rely on `review-shared` for output template and general review
+  requirements; rely on `go-code-review` and `python-code-review`
+  for language-specific checks.
 - If a rule already exists in an upstream dependency,
   link/reference it instead of repeating the same prose.
 
 ## Adding New Agents
 
-1. Create a new directory under `skills/` (for kind: Skill) or `prompts/` (for kind: Prompt)
+1. Create a new directory under `skills/` (for kind: Skill), `prompts/` (for kind: Prompt), or `workflows/` (for kind: Workflow)
 2. Follow the structure outlined in the [root README](README.md#skill-structure)
 3. Add your agent to the registry section above
 4. Include a clear description and usage instructions

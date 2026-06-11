@@ -60,6 +60,3 @@ Apply these requirements to every review, regardless of language or component.
   are clearly malformed or point to known-dead domains. Full
   reachability testing is not required, but obviously broken URLs
   should be called out.
-- Classify broken-link findings using the severity rubric (typically
-  Medium for documentation links, High when a broken reference would
-  cause a build or runtime failure).

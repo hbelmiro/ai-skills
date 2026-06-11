@@ -13,11 +13,11 @@ from pathlib import Path
 
 from utils.subprocess import run as _run
 
-_ARTIFACT_DIR_NAMES = ("skills", "prompts")
+_ARTIFACT_DIR_NAMES = ("skills", "prompts", "workflows")
 _ARTIFACT_JSON = "artifact.json"
 _STRIATUM_BUILD_DIR = "build"
 _SKILL_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
-# Values passed to striatum ``skill install|uninstall --target …``.
+# Values passed to striatum ``install|uninstall --target …``.
 STRIATUM_INSTALL_TARGETS = ("cursor", "claude")
 
 
@@ -521,7 +521,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--install-all",
         action="store_true",
-        help="Pack and push all artifacts in skills/ and prompts/; install only Skills",
+        help="Pack and push all artifacts in skills/, prompts/, and workflows/; install only Skills",
     )
     return parser
 

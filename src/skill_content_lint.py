@@ -89,8 +89,8 @@ def _build_parser() -> argparse.ArgumentParser:
         "--dir",
         type=Path,
         nargs="+",
-        default=[root / "skills", root / "prompts"],
-        help="Directories to scan (default: <repo>/skills <repo>/prompts)",
+        default=[root / "skills", root / "prompts", root / "workflows"],
+        help="Directories to scan (default: <repo>/skills <repo>/prompts <repo>/workflows)",
     )
     return parser
 
