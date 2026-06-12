@@ -121,17 +121,18 @@ def _striatum_target_from_argv(argv: list[str]) -> str:
 
 
 def _is_striatum_skill_install_argv(args: list[str]) -> bool:
-    """True if *args* is a ``striatum skill install …`` argv.
+    """True if *args* is a ``striatum install …`` argv.
 
-    Global flags may appear before the ``skill`` subcommand (e.g.
-    ``striatum --debug skill install``). Matches production argv from
-    ``install_skill`` which builds ``[striatum, "skill", "install", ...]``.
+    Global flags may appear before the ``install`` subcommand (e.g.
+    ``striatum --debug install``). Matches production argv from
+    ``install_skill`` which builds ``[striatum, "install", ...]``.
     """
     try:
-        i = args.index("skill")
+        i = args.index("install")
     except ValueError:
         return False
-    return i + 1 < len(args) and args[i + 1] == "install"
+    # Ensure "install" is not preceded by "skill" (old format)
+    return i == 0 or args[i - 1] != "skill"
 
 
 # ---------------------------------------------------------------------------
@@ -144,21 +145,20 @@ class TestIsStriatumSkillInstallArgv:
         ("argv", "expected"),
         [
             (
-                ["/usr/bin/striatum", "skill", "install", "--target", "cursor", "ref"],
+                ["/usr/bin/striatum", "install", "--target", "cursor", "ref"],
                 True,
             ),
             (
                 [
                     "/usr/bin/striatum",
                     "--debug",
-                    "skill",
                     "install",
                     "--target",
                     "cursor",
                 ],
                 True,
             ),
-            (["/usr/bin/striatum", "skill", "pack"], False),
+            (["/usr/bin/striatum", "pack"], False),
             (["/usr/bin/striatum", "validate"], False),
         ],
     )

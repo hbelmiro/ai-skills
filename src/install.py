@@ -344,7 +344,7 @@ def _install_ordered_skills(
         artifact_name = _read_artifact_name(skill_dir)
         ref = _reference(registry, artifact_name, version)
 
-        cmd = [striatum, "skill", "install", "--target", install_target, ref]
+        cmd = [striatum, "install", "--target", install_target, ref]
         if project:
             cmd.extend(["--project", str(project)])
         if force:
@@ -449,7 +449,7 @@ def uninstall_skill(
     striatum = _find_striatum()
 
     for t in unique_targets:
-        cmd = [striatum, "skill", "uninstall", "--target", t, skill_name]
+        cmd = [striatum, "uninstall", "--target", t, skill_name]
         if project:
             cmd.extend(["--project", str(project)])
         _run(cmd)
@@ -462,7 +462,7 @@ def reinstall_all(*, targets: Sequence[str], force: bool = False) -> None:
     unique_targets = _dedupe_targets(targets)
     striatum = _find_striatum()
     for t in unique_targets:
-        cmd = [striatum, "skill", "install", "--reinstall-all", "--target", t]
+        cmd = [striatum, "install", "--reinstall-all", "--target", t]
         if force:
             cmd.append("--force")
         _run(cmd)
