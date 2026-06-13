@@ -19,9 +19,7 @@ Use this prompt for Python-only reviews. Apply every checklist item explicitly.
 2. Read [`python-review-checklist.md`](python-review-checklist.md) and execute every check.
 3. Inspect changed and impacted call paths, not just edited lines.
 4. Prioritize findings by user impact and failure likelihood.
-5. Report findings using:
-   - [`../review-shared/severity-rubric.md`](../review-shared/severity-rubric.md)
-   - [`../review-shared/output-template.md`](../review-shared/output-template.md)
+5. Report findings using [`../review-shared/output-template.md`](../review-shared/output-template.md).
 
 ## Required Focus Areas
 

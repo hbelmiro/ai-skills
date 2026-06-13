@@ -93,7 +93,7 @@ Consolidation can **drop a distinct equivalence class** or hide a gap. Immediate
 
 After Phase F → G is settled, **review** the change set as the final gate before completion.
 
-1. Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) § **Review workflow** (steps 1–6), in
+1. Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) § **Review workflow** (steps 1–5), in
    order, as an independent reviewer—do not skip routing or
    review-the-review.
 2. **Fix** all issues you accept; re-run tests and linters/typecheck as

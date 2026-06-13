@@ -2,7 +2,7 @@
 name: generic-review
 description: >-
   Review a change set without a PR URL: full diff (git or already fetched), shared review requirements,
-  language/domain routing (KFP, Go, Python), severity rubric, output template, and review-the-review
+  language/domain routing (KFP, Go, Python), output template, and review-the-review
   self-validation. Use for local or branch reviews, pre-push review, or after pr-review has collected
   the PR diff via gh.
 ---
@@ -19,7 +19,7 @@ Use this skill when reviewing changes **without** requiring a pull request link�
 
 If you are **continuing immediately after** [`../pr-review/SKILL.md`](../pr-review/SKILL.md), the full diff should already be available from `gh pr diff`. In that case **skip** the diff-acquisition steps in `generic-review-checklist.md` and use that diff and the PR file list.
 
-When the overall task **started with pr-review**, this skill’s step 6 is **not** always the final pass: return to **pr-review** step 4 to run **Phase 2** (suppress findings already raised on the PR) and, if findings changed, apply [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md) again before presenting.
+When the overall task **started with pr-review**, this skill’s step 5 is **not** always the final pass: return to **pr-review** step 4 to run **Phase 2** (suppress findings already raised on the PR) and, if findings changed, apply [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md) again before presenting.
 
 ## Prerequisites
 
@@ -37,9 +37,8 @@ Before the workflow below, you must have:
    - Otherwise infer languages used by the project and apply matching language prompts:
      - Go: [`../../prompts/go-code-review/PROMPT.md`](../../prompts/go-code-review/PROMPT.md)
      - Python: [`../../prompts/python-code-review/PROMPT.md`](../../prompts/python-code-review/PROMPT.md)
-4. Classify findings with [`../../prompts/review-shared/severity-rubric.md`](../../prompts/review-shared/severity-rubric.md).
-5. Present results using [`../../prompts/review-shared/output-template.md`](../../prompts/review-shared/output-template.md).
-6. Read [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md) and apply it to your completed review. Fix any issues in-place before presenting.
+4. Present results using [`../../prompts/review-shared/output-template.md`](../../prompts/review-shared/output-template.md).
+5. Read [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md) and apply it to your completed review. Fix any issues in-place before presenting.
 
 ## Routing rules
 

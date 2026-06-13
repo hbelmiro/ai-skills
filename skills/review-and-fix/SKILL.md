@@ -33,10 +33,10 @@ they should commit—do not commit for them.
 
 1. Read [`review-and-fix-checklist.md`](review-and-fix-checklist.md) and execute it in order.
 2. **Review (fresh eyes)**: Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) § **Review
-   workflow** (steps 1–6), in order, as an independent reviewer. Obtain the
+   workflow** (steps 1–5), in order, as an independent reviewer. Obtain the
    **full** unified diff via **git** per
    [`../generic-review/generic-review-checklist.md`](../generic-review/generic-review-checklist.md) (**Diff acquisition**). Route,
-   classify findings, use the output template, and apply
+   use the output template, and apply
    [`../../prompts/review-shared/review-the-review.md`](../../prompts/review-shared/review-the-review.md).
 3. **Decision gate**:
    - If **issues found** → go to step 4.
@@ -51,7 +51,7 @@ they should commit—do not commit for them.
 ## Relationship to other skills
 
 - **`generic-review`**: Declared as a **direct** dependency; owns the
-  full-diff review workflow (step 2) including routing, severity, output
+  full-diff review workflow (step 2) including routing, output
   template, and review-the-review self-validation.
 - **`tdd`**: Declared as a **direct** dependency; owns how to implement with
   tests-first and scenario gates when TDD applies (step 4).

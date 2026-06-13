@@ -25,7 +25,7 @@ Optional: changed file count, additions/deletions from PR JSON.
 
 ## GitHub Review Comments (Ready To Paste)
 
-For each finding, output the metadata fields (File, Line, Severity) as plain
+For each finding, output the metadata fields (File, Line) as plain
 text followed by the comment body as regular markdown. Since the output file is
 already a markdown document, do NOT wrap the comment body in a fenced code
 block. Write it as normal markdown prose so it renders correctly, including any
@@ -37,7 +37,6 @@ Template (repeat for each finding, incrementing the number):
 
 File: BACKTICK path/to/file BACKTICK
 Line: BACKTICK 42 BACKTICK
-Severity: BACKTICK High BACKTICK
 
 Description of the issue — what is wrong.
 

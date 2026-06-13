@@ -14,6 +14,7 @@ import pytest
 import install as install_module
 
 from install import (
+    _ARTIFACT_DIR_NAMES,
     _available_artifacts,
     _available_skills,
     _find_artifact_dir,
@@ -102,6 +103,11 @@ def prompts_root(tmp_path: Path) -> Path:
     return tmp_path / "prompts"
 
 
+@pytest.fixture()
+def workflows_root(tmp_path: Path) -> Path:
+    return tmp_path / "workflows"
+
+
 def _fake_run_factory() -> tuple[list[list[str]], object]:
     """Return (calls_list, fake_run_fn) for monkeypatching _run."""
     calls: list[list[str]] = []
@@ -120,27 +126,32 @@ def _striatum_target_from_argv(argv: list[str]) -> str:
     return argv[indices[-1] + 1]
 
 
-def _is_striatum_skill_install_argv(args: list[str]) -> bool:
+def _is_striatum_install_argv(args: list[str]) -> bool:
     """True if *args* is a ``striatum install …`` argv.
 
-    Global flags may appear before the ``install`` subcommand (e.g.
-    ``striatum --debug install``). Matches production argv from
-    ``install_skill`` which builds ``[striatum, "install", ...]``.
+    Matches production argv from ``install_skill`` which builds
+    ``[striatum, "install", ...]``. Does not match ``uninstall``,
+    ``pack``, or ``push`` commands.
     """
-    try:
-        i = args.index("install")
-    except ValueError:
-        return False
-    # Ensure "install" is not preceded by "skill" (old format)
-    return i == 0 or args[i - 1] != "skill"
+    return "install" in args
 
 
 # ---------------------------------------------------------------------------
-# _is_striatum_skill_install_argv
+# _ARTIFACT_DIR_NAMES
 # ---------------------------------------------------------------------------
 
 
-class TestIsStriatumSkillInstallArgv:
+class TestArtifactDirNames:
+    def test_includes_workflows(self) -> None:
+        assert "workflows" in _ARTIFACT_DIR_NAMES
+
+
+# ---------------------------------------------------------------------------
+# _is_striatum_install_argv
+# ---------------------------------------------------------------------------
+
+
+class TestIsStriatumInstallArgv:
     @pytest.mark.parametrize(
         ("argv", "expected"),
         [
@@ -158,12 +169,13 @@ class TestIsStriatumSkillInstallArgv:
                 ],
                 True,
             ),
-            (["/usr/bin/striatum", "pack"], False),
+            (["/usr/bin/striatum", "pack", "-f", "path"], False),
             (["/usr/bin/striatum", "validate"], False),
+            (["/usr/bin/striatum", "uninstall", "--target", "cursor", "name"], False),
         ],
     )
-    def test_detects_skill_install_shape(self, argv: list[str], expected: bool) -> None:
-        assert _is_striatum_skill_install_argv(argv) is expected
+    def test_detects_install_shape(self, argv: list[str], expected: bool) -> None:
+        assert _is_striatum_install_argv(argv) is expected
 
 
 # ---------------------------------------------------------------------------
@@ -346,6 +358,15 @@ class TestAvailableArtifacts:
         _make_artifact(skills_root, "solo")
         assert _available_artifacts([skills_root]) == ["solo"]
 
+    def test_merges_from_three_dirs(
+        self, skills_root: Path, prompts_root: Path, workflows_root: Path
+    ) -> None:
+        _make_artifact(skills_root, "skill-a")
+        _make_artifact(prompts_root, "prompt-b", kind="Prompt")
+        _make_artifact(workflows_root, "workflow-c", kind="Workflow")
+        result = _available_artifacts([skills_root, prompts_root, workflows_root])
+        assert result == ["prompt-b", "skill-a", "workflow-c"]
+
 
 # ---------------------------------------------------------------------------
 # _load_artifact / _read_artifact_version / _read_artifact_name / _read_dependencies
@@ -368,6 +389,10 @@ class TestArtifactReading:
     def test_read_kind_prompt(self, skills_root: Path) -> None:
         _make_artifact(skills_root, "my-prompt", kind="Prompt")
         assert _read_artifact_kind(skills_root / "my-prompt") == "Prompt"
+
+    def test_read_kind_workflow(self, skills_root: Path) -> None:
+        _make_artifact(skills_root, "my-workflow", kind="Workflow")
+        assert _read_artifact_kind(skills_root / "my-workflow") == "Workflow"
 
     def test_read_kind_missing_file(self, tmp_path: Path) -> None:
         with pytest.raises(SystemExit):
@@ -720,6 +745,32 @@ class TestResolveAllDeps:
         assert result.index("go-code-review") < result.index("generic-review")
         assert len(result) == 3
 
+    def test_workflow_depends_on_prompts_across_dirs(
+        self,
+        skills_root: Path,
+        prompts_root: Path,
+        workflows_root: Path,
+    ) -> None:
+        _make_artifact(prompts_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            prompts_root,
+            "go-code-review",
+            kind="Prompt",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        _make_artifact(
+            workflows_root,
+            "thorough-review",
+            kind="Workflow",
+            dependencies=[_oci_dep("review-shared"), _oci_dep("go-code-review")],
+        )
+        result = _resolve_all_deps(
+            "thorough-review", [skills_root, prompts_root, workflows_root]
+        )
+        assert result.index("review-shared") < result.index("go-code-review")
+        assert result.index("go-code-review") < result.index("thorough-review")
+        assert len(result) == 3
+
     def test_missing_dependency_exits_with_available_list(
         self,
         skills_root: Path,
@@ -867,6 +918,26 @@ class TestGlobalInstallOrder:
         order = _global_install_order([skills_root, prompts_root])
         assert order.index("review-shared") < order.index("go-review")
         assert order.index("go-review") < order.index("generic-review")
+        assert len(order) == 3
+
+    def test_global_order_across_three_directories(
+        self, skills_root: Path, prompts_root: Path, workflows_root: Path
+    ) -> None:
+        _make_artifact(prompts_root, "review-shared", kind="Prompt")
+        _make_artifact(
+            skills_root,
+            "generic-review",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        _make_artifact(
+            workflows_root,
+            "thorough-review",
+            kind="Workflow",
+            dependencies=[_oci_dep("review-shared")],
+        )
+        order = _global_install_order([skills_root, prompts_root, workflows_root])
+        assert order.index("review-shared") < order.index("generic-review")
+        assert order.index("review-shared") < order.index("thorough-review")
         assert len(order) == 3
 
 
@@ -1094,7 +1165,7 @@ class TestInstallSkill:
         assert any("review-shared" in str(arg) for arg in push_calls[0])
         assert any("go-review" in str(arg) for arg in push_calls[1])
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 2
         assert "--target" in install_calls[0]
         assert "cursor" in install_calls[0]
@@ -1117,7 +1188,7 @@ class TestInstallSkill:
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 1
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 2
         targets_used = [_striatum_target_from_argv(c) for c in install_calls]
         assert targets_used == ["cursor", "claude"]
@@ -1135,7 +1206,7 @@ class TestInstallSkill:
 
         install_skill("my-skill", targets=["cursor", "cursor"])
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 1
         assert _striatum_target_from_argv(install_calls[0]) == "cursor"
 
@@ -1162,7 +1233,7 @@ class TestInstallSkill:
             args: list[str], **kwargs: object
         ) -> subprocess.CompletedProcess[str]:
             nonlocal install_attempts
-            if _is_striatum_skill_install_argv(args):
+            if _is_striatum_install_argv(args):
                 install_attempts += 1
                 if install_attempts >= 2:
                     raise SystemExit(1)
@@ -1190,7 +1261,7 @@ class TestInstallSkill:
 
         install_skill("my-skill", targets=["cursor"], project="/tmp/my-project")
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert "--project" in install_calls[0]
         assert "/tmp/my-project" in install_calls[0]
 
@@ -1207,7 +1278,7 @@ class TestInstallSkill:
 
         install_skill("my-skill", targets=["cursor"], force=True)
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert "--force" in install_calls[0]
 
     def test_missing_registry_exits(
@@ -1252,7 +1323,7 @@ class TestInstallSkill:
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 3
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 1
         assert any("generic-review" in str(arg) for arg in install_calls[0])
 
@@ -1296,7 +1367,7 @@ class TestInstallSkill:
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 3
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 1
         assert any("generic-review" in str(arg) for arg in install_calls[0])
 
@@ -1329,7 +1400,7 @@ class TestInstallAllSkills:
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 2
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 2
         assert any("review-shared" in str(arg) for arg in install_calls[0])
         assert any("go-review" in str(arg) for arg in install_calls[1])
@@ -1350,7 +1421,7 @@ class TestInstallAllSkills:
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 1
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 2
         targets_used = [_striatum_target_from_argv(c) for c in install_calls]
         assert targets_used == ["cursor", "claude"]
@@ -1383,7 +1454,7 @@ class TestInstallAllSkills:
 
         install_all_skills(targets=["cursor"], project="/tmp/my-project", force=True)
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 1
         assert "--project" in install_calls[0]
         assert "/tmp/my-project" in install_calls[0]
@@ -1412,7 +1483,7 @@ class TestInstallAllSkills:
             args: list[str], **kwargs: object
         ) -> subprocess.CompletedProcess[str]:
             nonlocal install_attempts
-            if _is_striatum_skill_install_argv(args):
+            if _is_striatum_install_argv(args):
                 install_attempts += 1
                 if install_attempts >= 2:
                     raise SystemExit(1)
@@ -1455,8 +1526,35 @@ class TestInstallAllSkills:
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 3
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 1
+
+    def test_install_all_skips_workflow_artifacts(
+        self,
+        skills_root: Path,
+        workflows_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        _make_artifact(workflows_root, "my-workflow", kind="Workflow")
+
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr(
+            "install._artifact_roots", lambda: [skills_root, workflows_root]
+        )
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_all_skills(targets=["cursor"])
+
+        push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
+        assert len(push_calls) == 2
+
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
+        assert len(install_calls) == 1
+        assert any("my-skill" in str(arg) for arg in install_calls[0])
 
     def test_install_all_across_directories(
         self,
@@ -1492,7 +1590,7 @@ class TestInstallAllSkills:
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 3
 
-        install_calls = [c for c in calls if _is_striatum_skill_install_argv(c)]
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 1
         assert any("generic-review" in str(arg) for arg in install_calls[0])
 

@@ -118,6 +118,8 @@ def _make_repo(
     skill_deps: dict[str, list[tuple[str, str]]] | None = None,
     prompt_names: list[str] | None = None,
     prompt_deps: dict[str, list[tuple[str, str]]] | None = None,
+    workflow_names: list[str] | None = None,
+    workflow_deps: dict[str, list[tuple[str, str]]] | None = None,
 ) -> Path:
     """Create a minimal repo structure for integration tests."""
     repo = tmp_path / "repo"
@@ -136,6 +138,12 @@ def _make_repo(
         for name in prompt_names:
             deps = (prompt_deps or {}).get(name)
             _make_artifact(prompts_root, name, deps=deps)
+    if workflow_names:
+        workflows_root = repo / "workflows"
+        workflows_root.mkdir()
+        for name in workflow_names:
+            deps = (workflow_deps or {}).get(name)
+            _make_artifact(workflows_root, name, deps=deps)
     return repo
 
 
@@ -401,12 +409,16 @@ class TestSetReleaseVersion:
         )
         assert '"tag": "1.0.0"' in go_artifact
 
-    def test_updates_artifacts_in_both_skills_and_prompts(self, tmp_path: Path) -> None:
+    def test_updates_artifacts_in_skills_prompts_and_workflows(
+        self, tmp_path: Path
+    ) -> None:
         repo = _make_repo(
             tmp_path,
             skill_names=["generic-review"],
             skill_deps={"generic-review": [("review-shared", _ARTIFACT_SNAPSHOT)]},
             prompt_names=["review-shared"],
+            workflow_names=["thorough-review"],
+            workflow_deps={"thorough-review": [("review-shared", _ARTIFACT_SNAPSHOT)]},
         )
 
         _set_release_version(repo, "2.0.0")
@@ -422,3 +434,9 @@ class TestSetReleaseVersion:
         ).read_text(encoding="utf-8")
         assert '"version": "2.0.0"' in prompt_artifact
         assert _ARTIFACT_SNAPSHOT not in prompt_artifact
+
+        workflow_artifact = (
+            repo / "workflows" / "thorough-review" / "artifact.json"
+        ).read_text(encoding="utf-8")
+        assert '"version": "2.0.0"' in workflow_artifact
+        assert _ARTIFACT_SNAPSHOT not in workflow_artifact
