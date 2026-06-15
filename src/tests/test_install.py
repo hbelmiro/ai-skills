@@ -1556,6 +1556,35 @@ class TestInstallAllSkills:
         assert len(install_calls) == 1
         assert any("my-skill" in str(arg) for arg in install_calls[0])
 
+    def test_install_all_installs_workflow_for_claude_target(
+        self,
+        skills_root: Path,
+        workflows_root: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        _make_artifact(workflows_root, "my-workflow", kind="Workflow")
+
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr(
+            "install._artifact_roots", lambda: [skills_root, workflows_root]
+        )
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_all_skills(targets=["claude"])
+
+        push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
+        assert len(push_calls) == 2
+
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
+        assert len(install_calls) == 2
+        installed_refs = [str(c) for c in install_calls]
+        assert any("my-skill" in r for r in installed_refs)
+        assert any("my-workflow" in r for r in installed_refs)
+
     def test_install_all_across_directories(
         self,
         skills_root: Path,
