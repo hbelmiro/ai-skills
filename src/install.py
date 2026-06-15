@@ -331,14 +331,18 @@ def _install_ordered_skills(
     project: str | None = None,
     force: bool = False,
 ) -> None:
-    skills_only = [
+    installable_kinds = {"Skill"}
+    if install_target == "claude":
+        installable_kinds.add("Workflow")
+    to_install = [
         name
         for name in names
-        if _read_artifact_kind(_find_artifact_dir(name, artifact_dirs)) == "Skill"
+        if _read_artifact_kind(_find_artifact_dir(name, artifact_dirs))
+        in installable_kinds
     ]
-    n = len(skills_only)
+    n = len(to_install)
     installed_ok: list[str] = []
-    for i, name in enumerate(skills_only, start=1):
+    for i, name in enumerate(to_install, start=1):
         skill_dir = _find_artifact_dir(name, artifact_dirs)
         version = _read_artifact_version(skill_dir)
         artifact_name = _read_artifact_name(skill_dir)
@@ -408,7 +412,7 @@ def install_all_skills(
     project: str | None = None,
     force: bool = False,
 ) -> None:
-    """Pack and push every artifact; install only Skills (dependency order)."""
+    """Pack and push every artifact; install Skills and Workflows (dependency order)."""
     _validate_targets(targets)
     unique_targets = _dedupe_targets(targets)
     artifact_dirs = _artifact_roots()
@@ -521,7 +525,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--install-all",
         action="store_true",
-        help="Pack and push all artifacts in skills/, prompts/, and workflows/; install only Skills",
+        help="Pack and push all artifacts in skills/, prompts/, and workflows/; install Skills and Workflows (claude only)",
     )
     return parser
 
