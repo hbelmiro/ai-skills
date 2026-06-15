@@ -42,6 +42,44 @@ Apply these requirements to every review, regardless of language or component.
   they should be updated to reflect the new expected behavior, not
   removed.
 
+## Mandatory Structural Quality Check
+
+Look beyond correctness for structural regressions and missed
+simplification opportunities.
+
+Every structural finding **must** include a concrete alternative — state
+what the code would look like after simplification. "This is complex" is
+not a finding. Flag complexity that is an artifact of the
+**implementation choice**, not complexity inherent to the domain. Prefer
+"delete" over "refactor."
+
+- **Structural simplification search**: for each materially changed file,
+  ask whether a restructuring preserves behavior but eliminates branches,
+  helpers, modes, conditionals, or layers entirely. Look for
+  re-organizations that use the existing architecture more effectively.
+- **Abstraction justification**: for every new abstraction introduced by
+  the diff (class, helper, wrapper, adapter), does it earn its existence?
+  Flag thin wrappers that add no logic, pass-through helpers, and identity
+  abstractions. Criterion: if removing it and inlining its body makes the
+  call site shorter without losing clarity, it is unjustified. Exceptions:
+  test seams, API stability layers, framework-required interfaces.
+- **Conditional sprawl**: flag ad-hoc conditionals scattered across
+  general-purpose flows for the same concern. The remedy is to restructure
+  so the special case lives at the boundary (dedicated abstraction, policy
+  object, or separate module) instead of threaded through the core.
+- **Layer correctness**: flag business logic in transport layers, I/O in
+  pure-logic functions, bespoke reimplementations of existing codebase
+  utilities, and feature-specific logic leaking into shared paths. Search
+  for existing helpers before accepting a new one.
+- **File size check**: if the diff pushes any file past 1,000 lines, flag
+  it with the current line count and a split suggestion.
+- **State model clarity**: flag new mode flags or enum-driven dispatch
+  that multiply `if mode == X` checks across the codebase instead of
+  consolidating behavior behind the state type.
+- **Unnecessary sequential orchestration**: flag step-by-step coordination
+  where operations are independent and could run in parallel, or where
+  multiple updates could be a single atomic operation.
+
 ## Mandatory Broken Link Check
 
 - For every added or modified file in the diff, verify that **internal

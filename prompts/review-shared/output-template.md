@@ -93,6 +93,7 @@ question bullets with `- None`).
 - Tests and edge cases reviewed: yes/no with notes
 - Do tests cover enough scenarios?: yes/no with notes
 - Broken link check: complete/incomplete
+- Structural quality check: complete/incomplete
 - Adversarial scenario gaps still open: list or "none"
 
 ## Change Summary

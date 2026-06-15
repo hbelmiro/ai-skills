@@ -77,6 +77,11 @@ const GENERIC_CHECKLIST = `
 - Verify tests cover changed behavior, edge cases, and failure paths.
 - Challenge happy-path assumptions by checking at least one adversarial scenario.
 - Explicitly answer: "Do tests cover enough scenarios?"
+- Actively search for structural simplifications: can branches, helpers, modes, or layers be eliminated while preserving behavior?
+- Flag unjustified abstractions: thin wrappers, pass-through helpers, identity adapters.
+- Flag conditional sprawl: ad-hoc special cases scattered across unrelated flows.
+- Check layer correctness: is new logic in the right layer? Is there an existing utility being reimplemented?
+- Flag files pushed past 1,000 lines by the diff.
 `
 
 // ---------------------------------------------------------------------------

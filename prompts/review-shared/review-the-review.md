@@ -36,7 +36,13 @@ just silently correct the review itself.
 
 - Every finding is actionable: it identifies a concrete problem and a concrete fix or question.
 - Generic advice without a specific code reference has been removed or made specific.
-- Nitpicks that do not affect correctness, security, or maintainability are classified as Low or removed if they add noise.
+- Nitpicks that do not affect correctness, security, or maintainability are removed.
+
+## Structural quality
+
+- At least one structural simplification opportunity was actively searched for (not just correctness bugs and style nits).
+- If no structural issues were found, the review states this explicitly rather than silently omitting the dimension.
+- Structural findings include a concrete alternative, not generic "this is complex" advice.
 
 ## Fairness
 
