@@ -69,7 +69,7 @@ Implementation often exposes missing cases (defensive branches, integration seam
 
 ## Phase E — Refactor (optional but default)
 
-With all tests green: refactor for clarity and structure without changing behavior; keep tests green.
+With all tests green: refactor for clarity and structure without changing behavior; keep tests green. Apply the structural quality checks from [`../../prompts/review-shared/general-review-requirements.md`](../../prompts/review-shared/general-review-requirements.md) — actively search for simplifications that eliminate unnecessary abstractions, conditional sprawl, or layers. Prefer deleting code over polishing it.
 
 ## Phase F — Overlap check
 
