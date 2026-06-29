@@ -1,0 +1,16 @@
+{
+  "apiVersion": "striatum.dev/v1alpha2",
+  "kind": "Skill",
+  "metadata": {
+    "name": "thorough-generic-review",
+    "version": "999-SNAPSHOT"
+  },
+  "spec": {
+    "entrypoint": "SKILL.md",
+    "files": ["SKILL.md", "README.md"]
+  },
+  "dependencies": [
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "diff-acquisition", "tag": "999-SNAPSHOT" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "thorough-review", "tag": "999-SNAPSHOT" }
+  ]
+}

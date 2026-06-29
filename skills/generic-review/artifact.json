@@ -10,6 +10,7 @@
     "files": ["SKILL.md", "README.md", "generic-review-checklist.md"]
   },
   "dependencies": [
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "diff-acquisition", "tag": "999-SNAPSHOT" },
     { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "999-SNAPSHOT" },
     { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "kubeflow-pipelines-code-review", "tag": "999-SNAPSHOT" },
     { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "999-SNAPSHOT" },
