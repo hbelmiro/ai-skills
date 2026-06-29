@@ -3,15 +3,15 @@
   "kind": "Workflow",
   "metadata": {
     "name": "thorough-review",
-    "version": "999-SNAPSHOT"
+    "version": "0.10.0"
   },
   "spec": {
     "entrypoint": "thorough-review.js",
     "files": ["thorough-review.js", "README.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "python-code-review", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "0.10.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "0.10.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "python-code-review", "tag": "0.10.0" }
   ]
 }

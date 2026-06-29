@@ -3,13 +3,13 @@
   "kind": "Prompt",
   "metadata": {
     "name": "python-code-review",
-    "version": "999-SNAPSHOT"
+    "version": "0.10.0"
   },
   "spec": {
     "entrypoint": "PROMPT.md",
     "files": ["PROMPT.md", "python-review-checklist.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "0.10.0" }
   ]
 }

@@ -3,7 +3,7 @@
   "kind": "Prompt",
   "metadata": {
     "name": "review-shared",
-    "version": "999-SNAPSHOT"
+    "version": "0.10.0"
   },
   "spec": {
     "entrypoint": "README.md",
