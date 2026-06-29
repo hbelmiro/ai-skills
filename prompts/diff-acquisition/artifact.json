@@ -1,0 +1,12 @@
+{
+  "apiVersion": "striatum.dev/v1alpha2",
+  "kind": "Prompt",
+  "metadata": {
+    "name": "diff-acquisition",
+    "version": "999-SNAPSHOT"
+  },
+  "spec": {
+    "entrypoint": "README.md",
+    "files": ["README.md", "diff-acquisition.md"]
+  }
+}

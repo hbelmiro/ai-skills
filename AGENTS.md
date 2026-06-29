@@ -20,6 +20,9 @@ This file tracks AI agents and skills within the monorepo.
   `prompts/kubeflow-pipelines-code-review/`
   KFP review workflow layered on Go and Python baseline checks plus
   control-plane rules.
+- `diff-acquisition` (Code Review, Active) in `prompts/diff-acquisition/`
+  Reusable diff-acquisition instructions for git-based reviews; ensures
+  read-only git usage and complete diff coverage.
 - `generic-review` (Code Review, Active) in `skills/generic-review/`
   Full-diff review without a PR URL, with shared requirements, routing,
   output template, and review-of-review validation.
@@ -46,6 +49,10 @@ This file tracks AI agents and skills within the monorepo.
   Parallel fan-out review with adversarial verification: Go, Python,
   and generic reviewers run concurrently; a skeptic agent verifies each
   finding; survivors are merged and formatted.
+- `thorough-generic-review` (Code Review, Active) in
+  `skills/thorough-generic-review/`
+  Diff acquisition plus `thorough-review` fan-out: acquires the diff
+  automatically, then runs parallel reviewers with adversarial verification.
 
 ## Skill Dependency Graph (`artifact.json`)
 
@@ -53,12 +60,14 @@ Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
 and `workflows/*/artifact.json` (`dependencies` field).
 
 - `review-shared` (base; no dependencies)
+- `diff-acquisition` (base; no dependencies)
 - `go-code-review` -> `review-shared`
 - `python-code-review` -> `review-shared`
 - `kubeflow-pipelines-code-review` ->
   `go-code-review`, `python-code-review`
 - `generic-review` ->
-  `review-shared`, `kubeflow-pipelines-code-review`,
+  `diff-acquisition`, `review-shared`,
+  `kubeflow-pipelines-code-review`,
   `go-code-review`, `python-code-review`
 - `pr-review` -> `generic-review`
 - `tdd` -> `generic-review`
@@ -66,16 +75,19 @@ and `workflows/*/artifact.json` (`dependencies` field).
 - `review-and-fix` -> `tdd`, `generic-review`
 - `thorough-review` ->
   `review-shared`, `go-code-review`, `python-code-review`
+- `thorough-generic-review` ->
+  `diff-acquisition`, `thorough-review`
 - `pr-review-to-file` -> `pr-review`
 
 ### Dependency Layers
 
-- **Layer 0 (foundation):** `review-shared`
+- **Layer 0 (foundation):** `review-shared`, `diff-acquisition`
 - **Layer 1 (language):** `go-code-review`, `python-code-review`
 - **Layer 2 (domain orchestration):**
   `kubeflow-pipelines-code-review`, `generic-review`,
   `thorough-review`
-- **Layer 3 (entry workflows):** `pr-review`, `tdd`
+- **Layer 3 (entry workflows):** `pr-review`, `tdd`,
+  `thorough-generic-review`
 - **Layer 4 (fix workflows):** `fix-pr-comments`, `review-and-fix`,
   `pr-review-to-file`
 
@@ -84,6 +96,7 @@ and `workflows/*/artifact.json` (`dependencies` field).
 - Keep global review rules and output conventions in `review-shared`.
 - Keep language-specific checks in
   `go-code-review` and `python-code-review`.
+- Keep diff-acquisition steps in `diff-acquisition`.
 - Keep routing/orchestration logic in `generic-review`.
 - Keep PR-context collection in `pr-review` and TDD phase flow in `tdd`.
 - In downstream skills, reference dependency skills
@@ -92,6 +105,10 @@ and `workflows/*/artifact.json` (`dependencies` field).
 ### Single Source of Truth Rules
 
 - This is a **strict policy**. PRs must fix violations before merge.
+- `diff-acquisition` owns:
+  diff acquisition instructions for git-based reviews (read-only git, scope
+  agreement, complete diff); other artifacts reference it instead of
+  inlining these steps.
 - `review-shared` owns:
   independent reviewer mode, output template, and review-the-review
   criteria.
@@ -126,6 +143,10 @@ and `workflows/*/artifact.json` (`dependencies` field).
   rely on `review-shared` for output template and general review
   requirements; rely on `go-code-review` and `python-code-review`
   for language-specific checks.
+- `thorough-generic-review` owns:
+  the diff-acquisition-to-thorough-review bridge; rely on
+  `diff-acquisition` for obtaining the diff and `thorough-review` for
+  parallel fan-out and adversarial verification.
 - If a rule already exists in an upstream dependency,
   link/reference it instead of repeating the same prose.
 
