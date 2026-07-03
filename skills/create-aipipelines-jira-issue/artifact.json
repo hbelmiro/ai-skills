@@ -3,7 +3,7 @@
   "kind": "Skill",
   "metadata": {
     "name": "create-aipipelines-jira-issue",
-    "version": "999-SNAPSHOT"
+    "version": "2026.11.0"
   },
   "spec": {
     "entrypoint": "SKILL.md",

@@ -3,17 +3,17 @@
   "kind": "Skill",
   "metadata": {
     "name": "generic-review",
-    "version": "999-SNAPSHOT"
+    "version": "2026.11.0"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "README.md", "generic-review-checklist.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "diff-acquisition", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "kubeflow-pipelines-code-review", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "python-code-review", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "diff-acquisition", "tag": "2026.11.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "2026.11.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "kubeflow-pipelines-code-review", "tag": "2026.11.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "2026.11.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "python-code-review", "tag": "2026.11.0" }
   ]
 }
