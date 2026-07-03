@@ -1,0 +1,12 @@
+{
+  "apiVersion": "striatum.dev/v1alpha2",
+  "kind": "Skill",
+  "metadata": {
+    "name": "create-aipipelines-jira-issue",
+    "version": "999-SNAPSHOT"
+  },
+  "spec": {
+    "entrypoint": "SKILL.md",
+    "files": ["SKILL.md", "README.md", "create_jira_ticket.py"]
+  }
+}
