@@ -53,6 +53,10 @@ This file tracks AI agents and skills within the monorepo.
   `skills/thorough-generic-review/`
   Diff acquisition plus `thorough-review` fan-out: acquires the diff
   automatically, then runs parallel reviewers with adversarial verification.
+- `create-aipipelines-jira-issue` (Automation, Active) in
+  `skills/create-aipipelines-jira-issue/`
+  Creates Jira issues in RHOAIENG with AI Pipelines component, team,
+  priority, and optional sprint; invokes bundled Python CLI script.
 
 ## Skill Dependency Graph (`artifact.json`)
 
@@ -78,6 +82,7 @@ and `workflows/*/artifact.json` (`dependencies` field).
 - `thorough-generic-review` ->
   `diff-acquisition`, `thorough-review`
 - `pr-review-to-file` -> `pr-review`
+- `create-aipipelines-jira-issue` (standalone; no dependencies)
 
 ### Dependency Layers
 
