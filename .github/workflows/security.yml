@@ -51,9 +51,6 @@ jobs:
         run: |
           uv sync --group security
 
-      - name: Upgrade pip
-        run: uv run python -m pip install "pip>=26.1.2"
-
       - name: Run pip-audit
         run: |
           uv run pip-audit
