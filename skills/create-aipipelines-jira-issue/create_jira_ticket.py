@@ -89,25 +89,22 @@ def _create_ticket(ticket_type: str, summary: str, description: str) -> str:
     return match.group(1)
 
 
-def _resolve_sprint(sprint_arg: str) -> int:
+def _resolve_sprint(sprint_arg: str, email: str, token: str) -> int:
     if sprint_arg == "autodetect":
         state = "active"
     else:
         state = "active,future"
-    result = _run(
-        [
-            "acli",
-            "jira",
-            "board",
-            "list-sprints",
-            "--id",
-            _BOARD_ID,
-            "--state",
-            state,
-            "--json",
-        ]
-    )
-    sprints: list[dict[str, str | int]] = json.loads(result.stdout)
+    url = f"{_JIRA_BASE_URL}/rest/agile/1.0/board/{_BOARD_ID}/sprint?state={state}"
+    credentials = base64.b64encode(f"{email}:{token}".encode()).decode()
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Basic {credentials}")
+    try:
+        with urllib.request.urlopen(req) as resp:
+            data = json.loads(resp.read())
+    except urllib.error.HTTPError as e:
+        print(f"error: Jira API returned HTTP {e.code}: {e.reason}", file=sys.stderr)
+        raise SystemExit(1)
+    sprints: list[dict[str, str | int]] = data["values"]
     if sprint_arg == "autodetect":
         if not sprints:
             print(
@@ -207,7 +204,7 @@ def main() -> None:
 
     sprint_id = None
     if args.sprint:
-        sprint_id = _resolve_sprint(args.sprint)
+        sprint_id = _resolve_sprint(args.sprint, email, token)
 
     issue_key = _create_ticket(args.ticket_type, args.summary, args.description)
 

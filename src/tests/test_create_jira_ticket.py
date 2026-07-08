@@ -14,6 +14,7 @@ import pytest
 import create_jira_ticket as cjt
 
 from create_jira_ticket import (
+    _BOARD_ID,
     _COMPONENT,
     _JIRA_BASE_URL,
     _PROJECT,
@@ -75,8 +76,8 @@ def _keychain_output(token: str) -> str:
     return f"go-keyring-base64:{encoded}\n"
 
 
-def _sprint_json(sprints: list[dict[str, str | int]]) -> str:
-    return json.dumps(sprints)
+def _sprint_api_body(sprints: list[dict[str, str | int]]) -> bytes:
+    return json.dumps({"values": sprints}).encode()
 
 
 def _acli_create_output(key: str) -> str:
@@ -247,15 +248,17 @@ class TestResolveSprint:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         sprints = [{"id": 68645, "name": "Sprint 42", "state": "active"}]
-        calls, fake = _fake_run_factory(
-            {"acli": _sprint_json(sprints)},
-        )
-        monkeypatch.setattr(cjt, "_run", fake)
-        assert _resolve_sprint("autodetect") == 68645
-        argv = calls[0]
-        assert "--state" in argv
-        idx = argv.index("--state")
-        assert argv[idx + 1] == "active"
+        requests: list[urllib.request.Request] = []
+
+        def fake_urlopen(req: urllib.request.Request) -> _FakeHTTPResponse:
+            requests.append(req)
+            return _FakeHTTPResponse(200, _sprint_api_body(sprints))
+
+        monkeypatch.setattr(cjt.urllib.request, "urlopen", fake_urlopen)
+        assert _resolve_sprint("autodetect", "u@r.com", "tok") == 68645
+        assert "state=active" in requests[0].full_url
+        assert "state=active%2Cfuture" not in requests[0].full_url
+        assert "state=active,future" not in requests[0].full_url
 
     def test_autodetect_picks_first_when_multiple(
         self,
@@ -265,18 +268,23 @@ class TestResolveSprint:
             {"id": 100, "name": "Sprint 10", "state": "active"},
             {"id": 200, "name": "Sprint 11", "state": "active"},
         ]
-        _, fake = _fake_run_factory({"acli": _sprint_json(sprints)})
-        monkeypatch.setattr(cjt, "_run", fake)
-        assert _resolve_sprint("autodetect") == 100
+
+        def fake_urlopen(req: urllib.request.Request) -> _FakeHTTPResponse:
+            return _FakeHTTPResponse(200, _sprint_api_body(sprints))
+
+        monkeypatch.setattr(cjt.urllib.request, "urlopen", fake_urlopen)
+        assert _resolve_sprint("autodetect", "u@r.com", "tok") == 100
 
     def test_autodetect_exits_when_no_active(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
-        _, fake = _fake_run_factory({"acli": _sprint_json([])})
-        monkeypatch.setattr(cjt, "_run", fake)
+        def fake_urlopen(req: urllib.request.Request) -> _FakeHTTPResponse:
+            return _FakeHTTPResponse(200, _sprint_api_body([]))
+
+        monkeypatch.setattr(cjt.urllib.request, "urlopen", fake_urlopen)
         with pytest.raises(SystemExit):
-            _resolve_sprint("autodetect")
+            _resolve_sprint("autodetect", "u@r.com", "tok")
 
     def test_named_sprint_returns_matching_id(
         self,
@@ -286,21 +294,28 @@ class TestResolveSprint:
             {"id": 100, "name": "Sprint 1", "state": "active"},
             {"id": 200, "name": "Sprint 2", "state": "future"},
         ]
-        _, fake = _fake_run_factory({"acli": _sprint_json(sprints)})
-        monkeypatch.setattr(cjt, "_run", fake)
-        assert _resolve_sprint("Sprint 2") == 200
+
+        def fake_urlopen(req: urllib.request.Request) -> _FakeHTTPResponse:
+            return _FakeHTTPResponse(200, _sprint_api_body(sprints))
+
+        monkeypatch.setattr(cjt.urllib.request, "urlopen", fake_urlopen)
+        assert _resolve_sprint("Sprint 2", "u@r.com", "tok") == 200
 
     def test_named_sprint_queries_active_and_future(
         self,
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         sprints = [{"id": 1, "name": "X", "state": "future"}]
-        calls, fake = _fake_run_factory({"acli": _sprint_json(sprints)})
-        monkeypatch.setattr(cjt, "_run", fake)
-        _resolve_sprint("X")
-        argv = calls[0]
-        idx = argv.index("--state")
-        assert argv[idx + 1] == "active,future"
+        requests: list[urllib.request.Request] = []
+
+        def fake_urlopen(req: urllib.request.Request) -> _FakeHTTPResponse:
+            requests.append(req)
+            return _FakeHTTPResponse(200, _sprint_api_body(sprints))
+
+        monkeypatch.setattr(cjt.urllib.request, "urlopen", fake_urlopen)
+        _resolve_sprint("X", "u@r.com", "tok")
+        url = requests[0].full_url
+        assert "state=active%2Cfuture" in url or "state=active,future" in url
 
     def test_named_sprint_exits_when_not_found(
         self,
@@ -308,12 +323,69 @@ class TestResolveSprint:
         capsys: pytest.CaptureFixture[str],
     ) -> None:
         sprints = [{"id": 1, "name": "Sprint A", "state": "active"}]
-        _, fake = _fake_run_factory({"acli": _sprint_json(sprints)})
-        monkeypatch.setattr(cjt, "_run", fake)
+
+        def fake_urlopen(req: urllib.request.Request) -> _FakeHTTPResponse:
+            return _FakeHTTPResponse(200, _sprint_api_body(sprints))
+
+        monkeypatch.setattr(cjt.urllib.request, "urlopen", fake_urlopen)
         with pytest.raises(SystemExit):
-            _resolve_sprint("Nonexistent")
+            _resolve_sprint("Nonexistent", "u@r.com", "tok")
         err = capsys.readouterr().err
         assert "Sprint A" in err
+
+    def test_constructs_correct_url(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        sprints = [{"id": 1, "name": "S", "state": "active"}]
+        requests: list[urllib.request.Request] = []
+
+        def fake_urlopen(req: urllib.request.Request) -> _FakeHTTPResponse:
+            requests.append(req)
+            return _FakeHTTPResponse(200, _sprint_api_body(sprints))
+
+        monkeypatch.setattr(cjt.urllib.request, "urlopen", fake_urlopen)
+        _resolve_sprint("autodetect", "u@r.com", "tok")
+        url = requests[0].full_url
+        expected = f"{_JIRA_BASE_URL}/rest/agile/1.0/board/{_BOARD_ID}/sprint"
+        assert url.startswith(expected)
+
+    def test_sends_basic_auth(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        sprints = [{"id": 1, "name": "S", "state": "active"}]
+        requests: list[urllib.request.Request] = []
+
+        def fake_urlopen(req: urllib.request.Request) -> _FakeHTTPResponse:
+            requests.append(req)
+            return _FakeHTTPResponse(200, _sprint_api_body(sprints))
+
+        monkeypatch.setattr(cjt.urllib.request, "urlopen", fake_urlopen)
+        _resolve_sprint("autodetect", "me@x.com", "secret")
+        auth = requests[0].get_header("Authorization")
+        expected = base64.b64encode(b"me@x.com:secret").decode()
+        assert auth == f"Basic {expected}"
+
+    def test_exits_on_http_error(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        def fake_urlopen(req: urllib.request.Request) -> _FakeHTTPResponse:
+            raise urllib.error.HTTPError(
+                req.full_url,
+                403,
+                "Forbidden",
+                Message(),
+                None,
+            )
+
+        monkeypatch.setattr(cjt.urllib.request, "urlopen", fake_urlopen)
+        with pytest.raises(SystemExit):
+            _resolve_sprint("autodetect", "u@r.com", "tok")
+        err = capsys.readouterr().err
+        assert "403" in err
 
 
 # ---------------------------------------------------------------------------
@@ -767,7 +839,7 @@ class TestMain:
         monkeypatch.setattr(
             cjt,
             "_resolve_sprint",
-            lambda s: (log["sprint"].append(s), 999)[1],
+            lambda s, e, t: (log["sprint"].append(s), 999)[1],
         )
         monkeypatch.setattr(
             cjt,
