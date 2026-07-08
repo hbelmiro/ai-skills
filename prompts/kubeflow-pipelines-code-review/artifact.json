@@ -3,14 +3,14 @@
   "kind": "Prompt",
   "metadata": {
     "name": "kubeflow-pipelines-code-review",
-    "version": "999-SNAPSHOT"
+    "version": "2026.11.1"
   },
   "spec": {
     "entrypoint": "PROMPT.md",
     "files": ["PROMPT.md", "kfp-review-checklist.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "python-code-review", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "go-code-review", "tag": "2026.11.1" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "python-code-review", "tag": "2026.11.1" }
   ]
 }
