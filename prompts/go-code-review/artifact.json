@@ -3,13 +3,13 @@
   "kind": "Prompt",
   "metadata": {
     "name": "go-code-review",
-    "version": "999-SNAPSHOT"
+    "version": "2026.11.2"
   },
   "spec": {
     "entrypoint": "PROMPT.md",
     "files": ["PROMPT.md", "go-review-checklist.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-shared", "tag": "2026.11.2" }
   ]
 }
