@@ -57,7 +57,7 @@ def _get_api_token() -> str:
     encoded = raw[len(_KEYCHAIN_PREFIX) :]
     try:
         return base64.b64decode(encoded).decode()
-    except binascii.Error, UnicodeDecodeError:
+    except (binascii.Error, UnicodeDecodeError):  # fmt: skip  # https://github.com/astral-sh/ruff/issues/26851
         print("error: could not decode API token", file=sys.stderr)
         raise SystemExit(1)
 
