@@ -3,14 +3,14 @@
   "kind": "Skill",
   "metadata": {
     "name": "thorough-generic-review",
-    "version": "999-SNAPSHOT"
+    "version": "2026.11.3"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "README.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "diff-acquisition", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "thorough-review", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "diff-acquisition", "tag": "2026.11.3" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "thorough-review", "tag": "2026.11.3" }
   ]
 }
