@@ -53,7 +53,7 @@ python3 create_jira_ticket.py \
 |-------------------|----------|-------------------------------------------|-----------------------------------------|
 | `--summary`       | Yes      | Free text                                 | Short title for the issue               |
 | `--description`   | Yes      | Free text                                 | Detailed description                    |
-| `--priority`      | No       | Blocker, Critical, Major, Minor, Trivial  | Omit to use Jira's default              |
+| `--priority`      | No       | Blocker, Critical, Major, Normal, Minor, Trivial | Omit to use Jira's default              |
 | `--type`          | Yes      | Task, Story, Bug                          | Jira issue type                         |
 | `--sprint`        | No       | `autodetect`, or a sprint name            | Omit to leave unassigned to any sprint  |
 
