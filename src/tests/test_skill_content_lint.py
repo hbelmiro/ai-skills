@@ -280,6 +280,7 @@ class TestCli:
         result = subprocess.run(
             [sys.executable, "-m", "skill_content_lint", "--dir", str(tmp_path)],
             capture_output=True,
+            check=False,
             text=True,
             cwd=str(Path(__file__).resolve().parent.parent),
         )
@@ -301,6 +302,7 @@ class TestCli:
         result = subprocess.run(
             [sys.executable, "-m", "skill_content_lint", "--dir", str(tmp_path)],
             capture_output=True,
+            check=False,
             text=True,
             cwd=str(Path(__file__).resolve().parent.parent),
         )

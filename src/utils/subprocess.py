@@ -11,7 +11,9 @@ def run(
     args: list[str], *, cwd: Path | None = None
 ) -> subprocess.CompletedProcess[str]:
     """Run a command, printing stderr on failure."""
-    result = subprocess.run(args, capture_output=True, text=True, cwd=cwd, timeout=120)
+    result = subprocess.run(
+        args, capture_output=True, check=False, text=True, cwd=cwd, timeout=120
+    )
     if result.returncode != 0:
         msg = (
             result.stderr.strip()

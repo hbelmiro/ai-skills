@@ -8,11 +8,10 @@ import subprocess
 import urllib.error
 import urllib.request
 from email.message import Message
-
-import pytest
+from typing import Self
 
 import create_jira_ticket as cjt
-
+import pytest
 from create_jira_ticket import (
     _BOARD_ID,
     _COMPONENT,
@@ -33,7 +32,6 @@ from create_jira_ticket import (
     _update_issue_fields,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -53,7 +51,6 @@ def _fake_run_factory(
 
     def fake_run(
         args: list[str],
-        **kwargs: object,
     ) -> subprocess.CompletedProcess[str]:
         calls.append(args)
         stdout = responses.get(args[0], "")
@@ -94,7 +91,7 @@ class _FakeHTTPResponse:
     def read(self) -> bytes:
         return self._body
 
-    def __enter__(self) -> _FakeHTTPResponse:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *args: object) -> None:

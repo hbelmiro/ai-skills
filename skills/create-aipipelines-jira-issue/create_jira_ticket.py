@@ -27,7 +27,9 @@ _KEYCHAIN_PREFIX = "go-keyring-base64:"
 
 
 def _run(args: list[str]) -> subprocess.CompletedProcess[str]:
-    result = subprocess.run(args, capture_output=True, text=True, timeout=120)
+    result = subprocess.run(
+        args, capture_output=True, check=False, text=True, timeout=120
+    )
     if result.returncode != 0:
         msg = (
             result.stderr.strip()
