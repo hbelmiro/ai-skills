@@ -2,10 +2,10 @@
 
 import json
 import os
-from typing import Dict, Any
+from typing import Any
 
 
-def load_config(config_path: str | None = None) -> Dict[str, Any]:
+def load_config(config_path: str | None = None) -> dict[str, Any]:
     """Load configuration from a JSON or YAML file.
 
     Args:
@@ -36,7 +36,7 @@ def process_data(input_data: str) -> str:
     return f"Processed: {input_data.upper()}"
 
 
-def save_results(results: Dict[str, Any], output_path: str) -> None:
+def save_results(results: dict[str, Any], output_path: str) -> None:
     """Save results to a JSON file.
 
     Args:

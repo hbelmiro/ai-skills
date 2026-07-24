@@ -8,8 +8,8 @@ from textwrap import dedent
 import pytest
 
 from release import (
-    _skills_with_artifacts,
     _set_release_version,
+    _skills_with_artifacts,
     _update_artifacts,
     _update_init_py,
     _update_pyproject,

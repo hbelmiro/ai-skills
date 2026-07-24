@@ -12,7 +12,6 @@ from textwrap import dedent
 import pytest
 
 import install as install_module
-
 from install import (
     _ARTIFACT_DIR_NAMES,
     _available_artifacts,
@@ -1739,6 +1738,7 @@ def _run_cli(
     return subprocess.run(
         [sys.executable, str(INSTALL_SCRIPT), *args],
         capture_output=True,
+        check=False,
         env=env,
         text=True,
         timeout=10,
