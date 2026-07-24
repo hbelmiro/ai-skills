@@ -34,6 +34,7 @@ def _check_preconditions(version: str, previous_tag: str, repo_root: Path) -> No
     subprocess.run(
         ["git", "fetch", "--tags"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=repo_root,
         timeout=30,
@@ -43,6 +44,7 @@ def _check_preconditions(version: str, previous_tag: str, repo_root: Path) -> No
     result = subprocess.run(
         ["git", "tag", "--list", tag],
         capture_output=True,
+        check=False,
         text=True,
         cwd=repo_root,
         timeout=10,
@@ -54,6 +56,7 @@ def _check_preconditions(version: str, previous_tag: str, repo_root: Path) -> No
     result = subprocess.run(
         ["git", "tag", "--list", previous_tag],
         capture_output=True,
+        check=False,
         text=True,
         cwd=repo_root,
         timeout=10,
@@ -65,6 +68,7 @@ def _check_preconditions(version: str, previous_tag: str, repo_root: Path) -> No
     result = subprocess.run(
         ["git", "rev-parse", "--abbrev-ref", "HEAD"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=repo_root,
         timeout=10,
@@ -77,6 +81,7 @@ def _check_preconditions(version: str, previous_tag: str, repo_root: Path) -> No
     result = subprocess.run(
         ["git", "status", "--porcelain"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=repo_root,
         timeout=10,
@@ -218,6 +223,7 @@ def main() -> None:
         subprocess.run(
             ["git", "checkout", "."],
             capture_output=True,
+            check=False,
             text=True,
             cwd=repo_root,
             timeout=10,
@@ -226,6 +232,7 @@ def main() -> None:
         subprocess.run(
             ["git", "checkout", "main"],
             capture_output=True,
+            check=False,
             text=True,
             cwd=repo_root,
             timeout=10,
@@ -234,6 +241,7 @@ def main() -> None:
         subprocess.run(
             ["git", "branch", "-D", branch],
             capture_output=True,
+            check=False,
             text=True,
             cwd=repo_root,
             timeout=10,
