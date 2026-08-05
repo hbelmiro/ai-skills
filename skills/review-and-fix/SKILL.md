@@ -42,7 +42,12 @@ they should commit—do not commit for them.
    - If **issues found** → go to step 4.
    - If **no issues** → the workflow is complete; present the clean review
      output to the user.
-4. **Fix**: Fix all accepted findings. Use [`../tdd/SKILL.md`](../tdd/SKILL.md) (phases A–G) when
+4. **Plan (required when issues found)**: Present the fix plan to the user:
+   which findings will be fixed, in what order, and the approach for each
+   (direct edit vs TDD). Follow
+   [`../../prompts/plan/PROMPT.md`](../../prompts/plan/PROMPT.md). **Wait for
+   explicit user approval** before proceeding to step 5.
+5. **Fix**: Fix all accepted findings. Use [`../tdd/SKILL.md`](../tdd/SKILL.md) (phases A–G) when
    behavior or coverage is in play; direct edit plus project tests/lint is
    enough for purely mechanical nits (typo, rename, comment-only) with no
    behavioral contract change. Re-run tests and linters/typecheck as
@@ -53,5 +58,7 @@ they should commit—do not commit for them.
 - **`generic-review`**: Declared as a **direct** dependency; owns the
   full-diff review workflow (step 2) including routing, output
   template, and review-the-review self-validation.
+- **`plan`**: Declared as a **direct** dependency; owns the implementation
+  planning workflow that produces the user-approved plan before fixing begins.
 - **`tdd`**: Declared as a **direct** dependency; owns how to implement with
-  tests-first and scenario gates when TDD applies (step 4).
+  tests-first and scenario gates when TDD applies (step 5).

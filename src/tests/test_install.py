@@ -144,6 +144,9 @@ class TestArtifactDirNames:
     def test_includes_workflows(self) -> None:
         assert "workflows" in _ARTIFACT_DIR_NAMES
 
+    def test_includes_memories(self) -> None:
+        assert "memories" in _ARTIFACT_DIR_NAMES
+
 
 # ---------------------------------------------------------------------------
 # _is_striatum_install_argv

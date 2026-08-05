@@ -4,9 +4,10 @@ This file tracks AI agents and skills within the monorepo.
 
 ## Maintenance Rule
 
-- Keep this file up to date whenever a skill or prompt is added, removed,
-  renamed, moved, or when any `skills/*/artifact.json` or
-  `prompts/*/artifact.json` dependency metadata changes.
+- Keep this file up to date whenever a skill, prompt, or memory is added,
+  removed, renamed, moved, or when any `skills/*/artifact.json`,
+  `prompts/*/artifact.json`, or `memories/*/artifact.json` dependency
+  metadata changes.
 
 ## Agent Registry
 
@@ -20,6 +21,9 @@ This file tracks AI agents and skills within the monorepo.
   `prompts/kubeflow-pipelines-code-review/`
   KFP review workflow layered on Go and Python baseline checks plus
   control-plane rules.
+- `plan` (Development, Active) in `prompts/plan/`
+  Implementation planning prompt: outline steps before acting and get
+  explicit user approval before proceeding.
 - `diff-acquisition` (Code Review, Active) in `prompts/diff-acquisition/`
   Reusable diff-acquisition instructions for git-based reviews; ensures
   read-only git usage and complete diff coverage.
@@ -57,14 +61,19 @@ This file tracks AI agents and skills within the monorepo.
   `skills/create-aipipelines-jira-issue/`
   Creates Jira issues in RHOAIENG with AI Pipelines component, team,
   priority, and optional sprint; invokes bundled Python CLI script.
+- `ask-dont-assume` (Feedback, Active) in `memories/ask-dont-assume/`
+  Memory artifact encouraging the agent to ask the user for clarification
+  instead of making assumptions when facing ambiguity.
 
 ## Skill Dependency Graph (`artifact.json`)
 
 Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
-and `workflows/*/artifact.json` (`dependencies` field).
+`workflows/*/artifact.json`, and `memories/*/artifact.json`
+(`dependencies` field).
 
 - `review-shared` (base; no dependencies)
 - `diff-acquisition` (base; no dependencies)
+- `plan` (base; no dependencies)
 - `go-code-review` -> `review-shared`
 - `python-code-review` -> `review-shared`
 - `kubeflow-pipelines-code-review` ->
@@ -74,19 +83,20 @@ and `workflows/*/artifact.json` (`dependencies` field).
   `kubeflow-pipelines-code-review`,
   `go-code-review`, `python-code-review`
 - `pr-review` -> `generic-review`
-- `tdd` -> `generic-review`
-- `fix-pr-comments` -> `tdd`, `pr-review`
-- `review-and-fix` -> `tdd`, `generic-review`
+- `tdd` -> `generic-review`, `plan`
+- `fix-pr-comments` -> `tdd`, `pr-review`, `plan`
+- `review-and-fix` -> `tdd`, `generic-review`, `plan`
 - `thorough-review` ->
   `review-shared`, `go-code-review`, `python-code-review`
 - `thorough-generic-review` ->
   `diff-acquisition`, `thorough-review`
 - `pr-review-to-file` -> `pr-review`
 - `create-aipipelines-jira-issue` (standalone; no dependencies)
+- `ask-dont-assume` (standalone; no dependencies)
 
 ### Dependency Layers
 
-- **Layer 0 (foundation):** `review-shared`, `diff-acquisition`
+- **Layer 0 (foundation):** `review-shared`, `diff-acquisition`, `plan`
 - **Layer 1 (language):** `go-code-review`, `python-code-review`
 - **Layer 2 (domain orchestration):**
   `kubeflow-pipelines-code-review`, `generic-review`,
@@ -95,6 +105,7 @@ and `workflows/*/artifact.json` (`dependencies` field).
   `thorough-generic-review`
 - **Layer 4 (fix workflows):** `fix-pr-comments`, `review-and-fix`,
   `pr-review-to-file`
+- **Standalone (memory):** `ask-dont-assume`
 
 ### Deduplication Guidance
 
@@ -103,6 +114,7 @@ and `workflows/*/artifact.json` (`dependencies` field).
   `go-code-review` and `python-code-review`.
 - Keep diff-acquisition steps in `diff-acquisition`.
 - Keep routing/orchestration logic in `generic-review`.
+- Keep implementation planning and approval gate in `plan`.
 - Keep PR-context collection in `pr-review` and TDD phase flow in `tdd`.
 - In downstream skills, reference dependency skills
   instead of duplicating shared instructions.
@@ -125,19 +137,25 @@ and `workflows/*/artifact.json` (`dependencies` field).
   KFP-specific checks only; rely on Go/Python skills for language baseline.
 - `pr-review` owns:
   PR metadata/thread collection only; rely on `generic-review` for findings.
+- `plan` owns:
+  the implementation planning workflow and user-approval gate; other artifacts
+  reference it instead of inlining planning steps.
 - `tdd` owns:
-  phase sequencing only; rely on `generic-review` for final review behavior.
+  phase sequencing only; rely on `generic-review` for final review behavior
+  and `plan` for the pre-Phase-A planning gate.
 - `fix-pr-comments` owns:
   triage and implement review feedback for a PR URL; rely on `pr-review`
-  for thread collection and `tdd` for test-first work when it applies;
-  require a fresh-eyes `generic-review` fix loop on the current git diff
-  before presenting the PR-comment summary; **never** commit or push (user
-  owns git history and remotes).
+  for thread collection, `plan` for the user-approved implementation plan
+  after triage, and `tdd` for test-first work when it applies; require a
+  fresh-eyes `generic-review` fix loop on the current git diff before
+  presenting the PR-comment summary; **never** commit or push (user owns
+  git history and remotes).
 - `review-and-fix` owns:
   the standalone review-fix loop on the current change set; rely on
-  `generic-review` for the full-diff review workflow and `tdd` for
-  test-first fixes when behavior or coverage is in play; **never** commit
-  or push (user owns git history and remotes).
+  `generic-review` for the full-diff review workflow, `plan` for the
+  user-approved fix plan before implementing, and `tdd` for test-first
+  fixes when behavior or coverage is in play; **never** commit or push
+  (user owns git history and remotes).
 - `pr-review-to-file` owns:
   the PR-review-to-file workflow; rely on `pr-review` for full PR review
   (gh context, comment validation, generic-review pipeline); save the
@@ -152,12 +170,15 @@ and `workflows/*/artifact.json` (`dependencies` field).
   the diff-acquisition-to-thorough-review bridge; rely on
   `diff-acquisition` for obtaining the diff and `thorough-review` for
   parallel fan-out and adversarial verification.
+- `ask-dont-assume` owns:
+  the "ask, don't assume" feedback guidance; loaded via Claude's memory
+  system independently of skill dependencies.
 - If a rule already exists in an upstream dependency,
   link/reference it instead of repeating the same prose.
 
 ## Adding New Agents
 
-1. Create a new directory under `skills/` (for kind: Skill), `prompts/` (for kind: Prompt), or `workflows/` (for kind: Workflow)
+1. Create a new directory under `skills/` (for kind: Skill), `prompts/` (for kind: Prompt), `workflows/` (for kind: Workflow), or `memories/` (for kind: Memory)
 2. Follow the structure outlined in the [root README](README.md#skill-structure)
 3. Add your agent to the registry section above
 4. Include a clear description and usage instructions

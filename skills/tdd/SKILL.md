@@ -37,6 +37,15 @@ implementation-first or spike-then-test.
 3. **Run the test suite** after substantive edits; fix failures before declaring a phase done.
 4. **Minimal implementation**: Write the smallest change that satisfies the current tests, then refactor while green.
 
+## Planning (before Phase A)
+
+Before writing tests, plan the TDD approach and present it to the user:
+identify the behavior contract, the scenarios you intend to cover, the test
+file(s) and structure, and any ambiguities in the requirements. Follow
+[`../../prompts/plan/PROMPT.md`](../../prompts/plan/PROMPT.md) for the
+planning workflow. **Wait for explicit user approval** before proceeding to
+Phase A.
+
 ## Phase A — Red: tests first
 
 1. Capture the behavior contract from the user or existing spec (inputs, outputs, errors, invariants).
@@ -107,6 +116,7 @@ Copy and track:
 
 ```text
 TDD progress:
+- [ ] Planning: user-approved plan in place
 - [ ] Phase A: failing tests in place
 - [ ] Phase B: scenario loop complete (pre-implementation)
 - [ ] Phase C: implementation green

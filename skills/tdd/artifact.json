@@ -10,6 +10,7 @@
     "files": ["SKILL.md", "README.md", "scenario-coverage.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "generic-review", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "generic-review", "tag": "999-SNAPSHOT" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "plan", "tag": "999-SNAPSHOT" }
   ]
 }

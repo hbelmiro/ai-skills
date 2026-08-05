@@ -22,7 +22,7 @@ Use when the user gives a **PR URL** (or clear owner/repo/number) and wants
 **existing** review feedback implemented and threads cleared as the **primary**
 goal (not a standalone "review this PR from scratch" request with no feedback to
 act on). A required **fresh-eyes** `generic-review` pass on the current diff
-still runs before the closing summary—see workflow step 7.
+still runs before the closing summary—see workflow step 8.
 
 ## Git and remotes (hard rule)
 
@@ -67,18 +67,25 @@ they should commit—do not commit for them.
 4. **Triage every thread** (and any review summary bullets worth acting on):
    decide fix vs skip vs defer. Skips and deferrals need a one-line rationale
    for the closing summary.
-5. **TDD** ([`../tdd/SKILL.md`](../tdd/SKILL.md)): Use for new or changed behavior, new edge cases,
+5. **Implementation plan (required)**: After triaging all comments, present a
+   concise implementation plan to the user covering: which comments will be
+   fixed and in what order, which will be skipped or deferred (with rationale),
+   and the approach for each fix (direct edit vs TDD). Follow
+   [`../../prompts/plan/PROMPT.md`](../../prompts/plan/PROMPT.md) for the
+   planning workflow. **Wait for explicit user approval** before proceeding
+   to implementation.
+6. **TDD** ([`../tdd/SKILL.md`](../tdd/SKILL.md)): Use for new or changed behavior, new edge cases,
    bug fixes that need regression tests, or refactors where tests should lock
    behavior. Follow phases **A–G** as appropriate for the slice of work; use
-   **Phase H** when the change set is non-trivial. **Step 7** below is still
+   **Phase H** when the change set is non-trivial. **Step 8** below is still
    mandatory before the PR-comment summary even if Phase H already ran. For
    purely mechanical nits (typo, rename, comment-only) with no behavioral
    contract change, a direct edit plus project tests/lint is enough—do not force
    a full TDD cycle.
-6. After PR-comment-driven fixes, run the **relevant** tests and
+7. After PR-comment-driven fixes, run the **relevant** tests and
    linters/typecheck for the repo; leave the working tree in a shippable state
    (still **no** commit or push—see **Git and remotes** above).
-7. **Pre-summary `generic-review` (required)**: Before presenting the PR-comment
+8. **Pre-summary `generic-review` (required)**: Before presenting the PR-comment
    summary, perform a **fresh-eyes** pass using [`../generic-review/SKILL.md`](../generic-review/SKILL.md) §
    **Review workflow** (steps 1–5), in order, as an independent reviewer—do
    not limit attention to the original threads. Use the **current** change set:
@@ -91,7 +98,7 @@ they should commit—do not commit for them.
    `generic-review` workflow (steps 1–5 again on an updated git diff) until
    there are **no** remaining issues you agree should block completion—only
    then proceed to the summary.
-8. **Closing summary (required)**: List **each** collected comment or actionable
+9. **Closing summary (required)**: List **each** collected comment or actionable
    review bullet in a structured way—for each item include: source (human/bot,
    optional username), short quote or paraphrase, location if inline (file/line
    or thread reference), and outcome (**fixed** / **skipped** + reason /
@@ -105,5 +112,7 @@ they should commit—do not commit for them.
   checklist.
 - **`tdd`**: Owns **how** to implement with tests-first and scenario gates when
   TDD applies, and Phase H review/fix when you use the full workflow.
+- **`plan`**: Declared as a **direct** dependency; owns the implementation
+  planning workflow that produces the user-approved plan before coding begins.
 - **`generic-review`**: Owns the **pre-summary** full-diff review and fix loop
-  (step 7); always run it with fresh eyes before the PR-comment summary.
+  (step 8); always run it with fresh eyes before the PR-comment summary.
