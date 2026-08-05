@@ -26,7 +26,7 @@ uv run ty check .        # Type check
 
 ### Adding Skills
 
-1. Create directory under `skills/your-skill/` or `prompts/your-prompt/`
+1. Create directory under `skills/your-skill/`, `prompts/your-prompt/`, or `memories/your-memory/`
 2. Follow the structure in the [root README](README.md#skill-structure)
 3. Import shared utilities: `from utils.common import ...`
 

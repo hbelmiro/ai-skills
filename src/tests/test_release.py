@@ -120,6 +120,7 @@ def _make_repo(
     prompt_deps: dict[str, list[tuple[str, str]]] | None = None,
     workflow_names: list[str] | None = None,
     workflow_deps: dict[str, list[tuple[str, str]]] | None = None,
+    memory_names: list[str] | None = None,
 ) -> Path:
     """Create a minimal repo structure for integration tests."""
     repo = tmp_path / "repo"
@@ -144,6 +145,11 @@ def _make_repo(
         for name in workflow_names:
             deps = (workflow_deps or {}).get(name)
             _make_artifact(workflows_root, name, deps=deps)
+    if memory_names:
+        memories_root = repo / "memories"
+        memories_root.mkdir()
+        for name in memory_names:
+            _make_artifact(memories_root, name)
     return repo
 
 
@@ -409,7 +415,7 @@ class TestSetReleaseVersion:
         )
         assert '"tag": "1.0.0"' in go_artifact
 
-    def test_updates_artifacts_in_skills_prompts_and_workflows(
+    def test_updates_artifacts_in_skills_prompts_workflows_and_memories(
         self, tmp_path: Path
     ) -> None:
         repo = _make_repo(
@@ -419,6 +425,7 @@ class TestSetReleaseVersion:
             prompt_names=["review-shared"],
             workflow_names=["thorough-review"],
             workflow_deps={"thorough-review": [("review-shared", _ARTIFACT_SNAPSHOT)]},
+            memory_names=["ask-dont-assume"],
         )
 
         _set_release_version(repo, "2.0.0")
@@ -440,3 +447,9 @@ class TestSetReleaseVersion:
         ).read_text(encoding="utf-8")
         assert '"version": "2.0.0"' in workflow_artifact
         assert _ARTIFACT_SNAPSHOT not in workflow_artifact
+
+        memory_artifact = (
+            repo / "memories" / "ask-dont-assume" / "artifact.json"
+        ).read_text(encoding="utf-8")
+        assert '"version": "2.0.0"' in memory_artifact
+        assert _ARTIFACT_SNAPSHOT not in memory_artifact

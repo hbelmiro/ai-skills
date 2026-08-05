@@ -11,6 +11,7 @@
   },
   "dependencies": [
     { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "tdd", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "generic-review", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "generic-review", "tag": "999-SNAPSHOT" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "plan", "tag": "999-SNAPSHOT" }
   ]
 }

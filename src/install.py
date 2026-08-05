@@ -13,7 +13,7 @@ from pathlib import Path
 
 from utils.subprocess import run as _run
 
-_ARTIFACT_DIR_NAMES = ("skills", "prompts", "workflows")
+_ARTIFACT_DIR_NAMES = ("skills", "prompts", "workflows", "memories")
 _ARTIFACT_JSON = "artifact.json"
 _STRIATUM_BUILD_DIR = "build"
 _SKILL_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")

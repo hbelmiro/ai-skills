@@ -22,7 +22,19 @@ Execute in order unless a step is not applicable (state N/A with reason).
 - [ ] Keep a **master list** of actionable items (inline comments, review
       bodies, issue comments—including CodeRabbit and similar bots).
 
-## 3. Implement
+## 3. Triage
+
+- [ ] For each item: fix, skip (with reason), or defer (with reason).
+
+## 4. Plan
+
+- [ ] Present the implementation plan to the user: what will be fixed (and in
+      what order), what will be skipped or deferred, and the approach for each
+      item (direct edit vs TDD).
+- [ ] Follow [`../../prompts/plan/PROMPT.md`](../../prompts/plan/PROMPT.md).
+- [ ] **Wait** for the user to approve before proceeding to implementation.
+
+## 5. Implement
 
 - [ ] **Branch gate — timing**: Run **once** before the first review-driven edit,
       or again after the **user** **pushed** and you re-query `gh pr view`. If
@@ -40,12 +52,11 @@ Execute in order unless a step is not applicable (state N/A with reason).
       when OID/ancestor check passes. **Do not** run `gh pr checkout` yourself.
       Otherwise **stop** and instruct the user to check out the PR head (for
       example `gh pr checkout <url>`) and try again.
-- [ ] For each item: fix, skip (with reason), or defer (with reason).
 - [ ] Apply **TDD** per [`../tdd/SKILL.md`](../tdd/SKILL.md) when behavior or coverage is in play;
       skip full TDD only for clearly non-behavioral nits.
 - [ ] Run tests and appropriate static checks after substantive edits.
 
-## 4. Pre-summary generic-review (fresh eyes)
+## 6. Pre-summary generic-review (fresh eyes)
 
 - [ ] Run [`../generic-review/SKILL.md`](../generic-review/SKILL.md) **Review workflow** (steps 1–5) on the
       **current** tree using a **git**-based full diff (see **Diff acquisition**
@@ -58,7 +69,7 @@ Execute in order unless a step is not applicable (state N/A with reason).
 - [ ] **Fix** accepted findings; re-run tests/static checks; **repeat** the full
       generic-review workflow until nothing you accept still blocks completion.
 
-## 5. Close out
+## 7. Close out
 
 - [ ] Produce the **summary**: every item from the master list with outcome
       (fixed / skipped / deferred) and rationale where not fixed.

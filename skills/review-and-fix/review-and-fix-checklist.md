@@ -24,7 +24,14 @@ Execute in order unless a step is not applicable (state N/A with reason).
 - [ ] If **no issues** remain → the workflow is complete; present the clean
       review output to the user.
 
-## 3. Fix and loop
+## 3. Plan
+
+- [ ] Present the fix plan to the user: which findings to fix, in what order,
+      and the approach (direct edit vs TDD).
+- [ ] Follow [`../../prompts/plan/PROMPT.md`](../../prompts/plan/PROMPT.md).
+- [ ] **Wait** for the user to approve before proceeding to fixes.
+
+## 4. Fix and loop
 
 - [ ] **Fix** every accepted finding.
 - [ ] Apply **TDD** per [`../tdd/SKILL.md`](../tdd/SKILL.md) (phases A–G) when behavior or

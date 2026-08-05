@@ -8,6 +8,7 @@ A collection of AI skills and projects organized in a single repository.
 - `skills/` - AI skills (kind: Skill)
 - `prompts/` - AI prompts (kind: Prompt)
 - `workflows/` - AI workflows (kind: Workflow)
+- `memories/` - AI memories (kind: Memory)
 
 ## Skill Structure
 
@@ -103,7 +104,7 @@ Run `uv run python src/install.py --help` for full usage.
 
 ## Adding a New Skill
 
-1. Create a new directory under `skills/` (for kind: Skill), `prompts/` (for kind: Prompt), or `workflows/` (for kind: Workflow)
+1. Create a new directory under `skills/` (for kind: Skill), `prompts/` (for kind: Prompt), `workflows/` (for kind: Workflow), or `memories/` (for kind: Memory)
 2. Use lowercase with hyphens for directory names (e.g., `go-code-review`, `python-code-review`)
 3. Add a README.md with project description and setup instructions
 4. Include any necessary configuration files

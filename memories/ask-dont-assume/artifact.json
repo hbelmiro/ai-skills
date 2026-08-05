@@ -1,0 +1,12 @@
+{
+  "apiVersion": "striatum.dev/v1alpha2",
+  "kind": "Memory",
+  "metadata": {
+    "name": "ask-dont-assume",
+    "version": "999-SNAPSHOT"
+  },
+  "spec": {
+    "entrypoint": "MEMORY.md",
+    "files": ["MEMORY.md"]
+  }
+}
