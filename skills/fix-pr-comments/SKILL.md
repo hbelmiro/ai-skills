@@ -19,7 +19,7 @@ Use when user gives **PR URL** (or clear owner/repo/number) and wants **existing
 
 ## Git and remotes (hard rule)
 
-**Never** create commits or update remotes: do **not** run `git commit`, `git push`, `git commit --amend`, `git rebase`, `git merge`, `git cherry-pick`, `git pull` when would merge/rebase, or equivalent. Read-only git (`status`, `diff`, `rev-parse`, `log`, etc.) fine. Apply edits in working tree only; **user** commits and pushes. If workflow depend on (example TDD) implies committing, **skip** that part and tell user what should commit—do not commit for them.
+**Never** create commits or update remotes: do **not** run `git commit`, `git push`, `git commit --amend`, `git rebase`, `git merge`, `git cherry-pick`, `git pull` when would merge/rebase, or equivalent. Read-only git (`status`, `diff`, `rev-parse`, `log`, etc.) fine. Apply edits in working tree only; **user** commits and pushes. If a dependent workflow (e.g. TDD) implies committing, **skip** that part and tell user what to commit—do not commit for them.
 
 ## Workflow
 

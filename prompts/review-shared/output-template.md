@@ -1,6 +1,6 @@
 # Review Output Template
 
-Use format for reviews.
+Use this output format for reviews.
 
 ## Document order
 

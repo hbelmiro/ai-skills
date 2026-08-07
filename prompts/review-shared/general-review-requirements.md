@@ -1,10 +1,10 @@
 # General Review Requirements
 
-Apply to every review. Language/component no matter.
+Apply to every review, regardless of language or component.
 
 ## Mandatory Review Behavior
 
-- No skip checklist. Files look unrelated no matter.
+- Do not skip checklist items because files look unrelated.
 - Escalate security, data integrity, compatibility, reliability risks first.
 - Read code and tests. Flag assumptions. List **only** open questions when behavior unclear.
 - Actionable fixes over generic advice.
