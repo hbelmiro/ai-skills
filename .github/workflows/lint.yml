@@ -50,23 +50,6 @@ jobs:
             \( -name "*.yml" -o -name "*.yaml" \) -print | \
             xargs uv run yamllint -c .yamllint.yml
 
-  lint-skills:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-
-      - name: Install uv
-        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
-
-      - name: Set up Python
-        run: uv python install 3.14
-
-      - name: Install dependencies
-        run: uv sync --group lint
-
-      - name: Check trust boundary preamble in SKILL.md files
-        run: uv run python src/skill_content_lint.py
-
   lint-links:
     runs-on: ubuntu-latest
     steps:

@@ -1,40 +1,38 @@
 # PR Review Checklist
 
-Apply every check explicitly. **Phase 1** runs before delegating to `generic-review`. **Phase 2** runs after generic-review produces draft findings (see `SKILL.md`).
+Run all checks. **Phase 1** before `generic-review`. **Phase 2** after draft findings (see `SKILL.md`).
 
 ## Phase 1 — Before generic-review
 
 ### PR Context Collection
 
 - Read PR overview with `gh pr view <url> --json title,body,baseRefName,headRefName,author,changedFiles,additions,deletions,mergeStateStatus`.
-- Gather review comments and threads with `gh pr view <url> --comments` and `gh api` queries when thread resolution state is required. Use read-only `gh api` for inline review comments on the PR (for example pull review comments) when `--comments` does not expose enough thread detail.
-- Review commit history and discussion chronology to understand why changes were made.
-- Detect project language mix from repository signals (for example `go.mod`, `pyproject.toml`) and changed file types.
+- Gather review comments with `gh pr view <url> --comments` and `gh api` when thread state needed. Use read-only `gh api` for inline review comments when `--comments` miss detail.
+- Review commit history + discussion timeline. Understand why changes made.
+- Detect project language from signals (`go.mod`, `pyproject.toml`) + changed file types.
 
 ### Mandatory Diff Review
 
-- Fetch and retain the full PR diff with `gh pr diff <url>`.
-- Ensure the diff includes every changed file; pass this full diff to
-  `generic-review` for risk analysis and findings.
-- Ensure mandatory full-diff inspection is executed in
-  [`generic-review-checklist.md`](../generic-review/generic-review-checklist.md); do not skip that review step.
+- Fetch full PR diff with `gh pr diff <url>`.
+- Diff include all changed files. Pass full diff to `generic-review` for risk analysis.
+- Run mandatory full-diff inspection in [`generic-review-checklist.md`](../generic-review/generic-review-checklist.md). No skip.
 
 ### Comment Resolution Validation
 
-- Check whether all prior review comments are addressed in code.
-- For resolved conversations, verify the final code actually satisfies the concern.
-- Flag resolutions that are stale, incomplete, or unsupported by code changes.
-- List unresolved threads and any resolved-but-questionable threads in the report.
+- Check all prior review comments addressed in code.
+- For resolved conversations, verify final code satisfy concern.
+- Flag resolutions: stale, incomplete, unsupported by code changes.
+- List unresolved threads + questionable resolved threads in report.
 
 ### Output order (PR reviews)
 
-- The final written review MUST follow [`../../prompts/review-shared/output-template.md`](../../prompts/review-shared/output-template.md) section order. For PR URLs, the **Pull request context** block (title, link, full PR **body**, base/head, author) MUST appear **first**, before **GitHub Review Comments** (numbered findings).
+- Final review MUST follow [`../../prompts/review-shared/output-template.md`](../../prompts/review-shared/output-template.md) section order. For PR URLs, **Pull request context** block (title, link, full PR **body**, base/head, author) MUST appear **first**, before **GitHub Review Comments** (numbered findings).
 
 ## Phase 2 — After generic-review output
 
 ### Suppress duplicate PR comments
 
-- Use **all** thread sources collected in Phase 1 (issue comments, review summaries, inline review comments).
-- For each candidate finding in **GitHub Review Comments**, **omit** it from the numbered list if a prior PR comment or review already raises the **same concrete concern** on the **same or overlapping code** (file and line or region). Match on substance, not exact wording.
-- **Still emit a finding** when: the earlier thread is stale relative to the current diff, the concern was marked resolved but the code still violates it, or the new finding is a **distinct** sub-issue not covered by the earlier comment.
-- Record suppressed items briefly under **Findings not repeated (already in PR discussion)** in the output template — not as full duplicate comments.
+- Use **all** thread sources from Phase 1 (issue comments, review summaries, inline review comments).
+- For each finding in **GitHub Review Comments**, **omit** from numbered list if prior PR comment raise **same concern** on **same code** (file + line/region). Match substance, not wording.
+- **Still emit finding** when: earlier thread stale vs current diff, concern marked resolved but code still violate, new finding **distinct** sub-issue not covered by earlier comment.
+- Record suppressed items brief under **Findings not repeated (already in PR discussion)** in output template. Not full duplicate comments.

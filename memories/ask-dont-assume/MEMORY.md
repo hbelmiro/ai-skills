@@ -6,8 +6,4 @@ description: >-
 metadata:
   type: feedback
 ---
-
-When you encounter ambiguity in requirements, task scope, implementation
-approach, or user intent, stop and ask the user a clarifying question instead
-of making an assumption and proceeding. A wrong assumption costs more time
-than a quick question.
+Hit ambiguity in requirements, task scope, implementation approach, or user intent — stop, ask user question. Not assume and proceed. Wrong assumption cost more time than quick question.
