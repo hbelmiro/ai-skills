@@ -130,6 +130,10 @@ The script:
 5. Creates a GitHub Release with auto-generated notes (diff from the previous tag)
 6. Returns to `main` and deletes the local release branch
 
+## Compressed Artifacts
+
+LLM-consumed instruction files (SKILL.md, PROMPT.md, checklists, requirements) are compressed with [caveman-compress](https://github.com/juliusbrussee/caveman) to reduce input tokens. Code blocks, URLs, paths, and technical terms are preserved byte-for-byte — only prose is shortened. Human-readable READMEs are not compressed.
+
 ## License
 
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.

@@ -1,61 +1,61 @@
 # Review the Review
 
-Re-read your entire review output before presenting it.
-Apply every check below and fix any issues found in-place.
-Do not add a separate "meta-review" section to the output;
-just silently correct the review itself.
+Re-read entire review output before presenting.
+Apply every check below and fix issues found in-place.
+No separate "meta-review" section to output;
+silently correct review itself.
 
 ## Completeness
 
-- Every changed file in the diff is accounted for (reviewed or explicitly noted as no-issue).
-- All checklist sections from the applicable artifact(s) were executed; none were silently skipped.
-- The Coverage Check section accurately reflects which checklists were completed.
-- **Open Questions** is always present, but bullets list **only** uncertainties
-  that stay unresolved **after** you searched the codebase, tests, and
-  in-scope context (PR body, etc.). Do not use this section for items you could
+- Every changed file in diff accounted for (reviewed or explicitly noted as no-issue).
+- All checklist sections from applicable artifact(s) executed; none silently skipped.
+- Coverage Check section accurately reflects which checklists completed.
+- **Open Questions** always present, but bullets list **only** uncertainties
+  that stay unresolved **after** you searched codebase, tests, and
+  in-scope context (PR body, etc.). No use this section for items you could
   have settled by reading code. If nothing remains open, state **None**
   explicitly.
-- For **PR-linked** reviews: **Pull request context** is present, appears **before** numbered findings, and includes the full PR **body** (not only the title).
+- For **PR-linked** reviews: **Pull request context** present, appears **before** numbered findings, and includes full PR **body** (not only title).
 
 ## Accuracy
 
-- Each finding references the correct file path and line number. Re-read the diff to verify every line number points to the exact line described — do not trust line numbers from memory.
-- For findings about **removed** lines, verify the Line field references the nearest surviving context line and explicitly notes the deletion — not a line number that points to unrelated code in the current file.
-- Quoted code snippets match the actual diff content (no stale or hallucinated code).
-- Suggested fixes are syntactically valid and would actually resolve the issue.
-- Major conclusions are backed by specific evidence from code paths,
+- Each finding references correct file path and line number. Re-read diff to verify every line number points to exact line described — no trust line numbers from memory.
+- For findings about **removed** lines, verify Line field references nearest surviving context line and explicitly notes deletion — not line number that points to unrelated code in current file.
+- Quoted code snippets match actual diff content (no stale or hallucinated code).
+- Suggested fixes syntactically valid and would actually resolve issue.
+- Major conclusions backed by specific evidence from code paths,
   tests, or specs.
 
 ## Consistency
 
 - No duplicate findings (same issue reported more than once under different wording).
-- For **PR** reviews where prior comments were collected: findings do not restate issues already raised on the PR unless the prior thread is **stale**, the concern **remains unresolved** in the code, or the new finding is a **distinct** sub-issue. Suppressed overlaps belong under **Findings not repeated** per the output template.
-- No contradictory findings (one comment recommends X, another recommends the opposite).
+- For **PR** reviews where prior comments collected: findings no restate issues already raised on PR unless prior thread **stale**, concern **remains unresolved** in code, or new finding is **distinct** sub-issue. Suppressed overlaps belong under **Findings not repeated** per output template.
+- No contradictory findings (one comment recommends X, another recommends opposite).
 
 ## Signal-to-noise
 
-- Every finding is actionable: it identifies a concrete problem and a concrete fix or question.
-- Generic advice without a specific code reference has been removed or made specific.
-- Nitpicks that do not affect correctness, security, or maintainability are removed.
+- Every finding actionable: identifies concrete problem and concrete fix or question.
+- Generic advice without specific code reference removed or made specific.
+- Nitpicks that no affect correctness, security, or maintainability removed.
 
 ## Structural quality
 
-- At least one structural simplification opportunity was actively searched for (not just correctness bugs and style nits).
-- If no structural issues were found, the review states this explicitly rather than silently omitting the dimension.
-- Structural findings include a concrete alternative, not generic "this is complex" advice.
+- At least one structural simplification opportunity actively searched for (not only correctness bugs and style nits).
+- If no structural issues found, review states this explicitly rather than silently omitting dimension.
+- Structural findings include concrete alternative, not generic "this is complex" advice.
 
 ## Fairness
 
-- Findings are based on what the diff actually does, not on assumptions about intent.
-- Positive aspects of the change are acknowledged in the Change Summary when warranted.
-- Tone is constructive and professional throughout.
+- Findings based on what diff actually does, not on assumptions about intent.
+- Positive aspects of change acknowledged in Change Summary when warranted.
+- Tone constructive and professional throughout.
 
 ## Anti-bias discipline
 
-- The review does not rely on author-justification language
+- Review no rely on author-justification language
   (for example: "probably intended", "likely safe")
   without evidence.
-- At least one plausible counterexample or failure mode was checked for
+- At least one plausible counterexample or failure mode checked for
   each high-impact behavior change.
 - If behavior cannot be verified from available code/tests,
-  uncertainty is called out as an open question.
+  uncertainty called out as open question.

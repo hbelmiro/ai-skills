@@ -1,37 +1,33 @@
 # Review Output Template
 
-Use this output format for reviews.
+Use format for reviews.
 
 ## Document order
 
-- **PR-linked reviews** (started from a PR URL via `pr-review`): present sections in this order — **Pull request context** → **GitHub Review Comments** → **Findings not repeated (already in PR discussion)** → **Open Questions** → **Discussion Resolution Check** → **Coverage Check** → **Change Summary**.
-- **Non-PR reviews** (`generic-review` only, no PR URL): **omit** **Pull request context** and **Findings not repeated** entirely.
+- **PR-linked reviews** (from PR URL via `pr-review`): order sections — **Pull request context** → **GitHub Review Comments** → **Findings not repeated (already in PR discussion)** → **Open Questions** → **Discussion Resolution Check** → **Coverage Check** → **Change Summary**.
+- **Non-PR reviews** (`generic-review`, no PR URL): **omit** **Pull request context** and **Findings not repeated** entirely.
 
 ## Pull request context (PR reviews only)
 
-Place this section **first** in the document (before numbered findings). Reproduce the author’s intent from `gh pr view`; do not bury the PR body at the end of the review.
+Place section **first** (before numbered findings). Reproduce author intent from `gh pr view`; no bury PR body at end.
 
-Include at minimum:
+Include minimum:
 
 - **Title:** (PR title)
 - **URL / number:** (link or owner/repo#n)
-- **Description (author body):** full PR body as returned by `gh pr view` (preserve structure; use normal markdown)
+- **Description (author body):** full PR body from `gh pr view` (preserve structure; use normal markdown)
 - **Base / head:** branch or ref names
 - **Author:** from PR JSON
 
-Optional: changed file count, additions/deletions from PR JSON.
+Optional: file count, additions/deletions from PR JSON.
 
-**Non-PR reviews:** omit this entire section.
+**Non-PR reviews:** omit section.
 
 ## GitHub Review Comments (Ready To Paste)
 
-For each finding, output the metadata fields (File, Line) as plain
-text followed by the comment body as regular markdown. Since the output file is
-already a markdown document, do NOT wrap the comment body in a fenced code
-block. Write it as normal markdown prose so it renders correctly, including any
-embedded code blocks for suggested fixes.
+For each finding, output metadata fields (File, Line) as plain text then comment body as regular markdown. Output file already markdown document, no wrap comment body in fenced code block. Write as normal markdown prose for correct render, include embedded code blocks for suggested fixes.
 
-Template (repeat for each finding, incrementing the number):
+Template (repeat per finding, increment number):
 
 ### Comment 1
 
@@ -49,34 +45,22 @@ not obvious from the context. Omit for self-evident issues.)
 
 ...
 
-In the template above, replace BACKTICK with a single backtick character.
-The placeholder is used here only because real backticks inside this template
-would be consumed by the markdown parser instead of being reproduced in output.
+In template above, replace BACKTICK with single backtick character. Placeholder used here only because real backticks inside template consumed by markdown parser instead of reproduced in output.
 
-**Deleted-line findings:** When a finding is about code that was **removed** in
-the diff, the deleted lines have no valid line number in the current file. Use
-the nearest surviving line as the anchor and note the deletion explicitly — e.g.,
-Line: BACKTICK 139 BACKTICK (deleted line — visible only in diff).
-Never cite a line number that points to unrelated code in the current file.
+**Deleted-line findings:** When finding about code **removed** in diff, deleted lines have no valid line number in current file. Use nearest surviving line as anchor and note deletion explicitly — e.g., Line: BACKTICK 139 BACKTICK (deleted line — visible only in diff). Never cite line number pointing to unrelated code in current file.
 
 ## Findings not repeated (already in PR discussion)
 
-**PR reviews only.** Omit this section when not PR-linked or when nothing was suppressed.
+**PR reviews only.** Omit section when not PR-linked or nothing suppressed.
 
-For each suppressed finding (same concern already raised on the PR), add one bullet: what was skipped, which prior thread it matches (author, short quote, or permalink if available). If a **new** finding **narrows** or **replaces** a duplicate rather than duplicating it, note that there instead of repeating the issue twice in **GitHub Review Comments**.
+For each suppressed finding (same concern already raised on PR), add bullet: what skipped, which prior thread matches (author, short quote, or permalink if available). If **new** finding **narrows** or **replaces** duplicate rather than duplicate it, note there instead of repeat issue twice in **GitHub Review Comments**.
 
 ## Open Questions
 
-Before listing anything here, **try to answer the question yourself** from the
-diff, surrounding code, tests, configs, and (for PR reviews) the PR body or
-linked context. Read call sites, types, and existing tests; search the repo for
-related behavior. **List only questions that remain unanswerable** from what
-you can inspect in the repository and the materials already in scope for the
-review.
+Before list anything here, **try answer question yourself** from diff, surrounding code, tests, configs, and (for PR reviews) PR body or linked context. Read call sites, types, existing tests; search repo for related behavior. **List only questions remain unanswerable** from what you can inspect in repository and materials already in scope for review.
 
-In the rendered review, use **one bullet per remaining question**, or **exactly one** bullet `- None` if investigation resolved every uncertainty (do not mix
-question bullets with `- None`).
-- \<each question that stays unanswered after that investigation\>
+In rendered review, use **one bullet per remaining question**, or **exactly one** bullet `- None` if investigation resolved every uncertainty (no mix question bullets with `- None`).
+- \<each question stays unanswered after investigation\>
 
 ## Discussion Resolution Check
 
@@ -98,4 +82,4 @@ question bullets with `- None`).
 
 ## Change Summary
 
-The reviewer’s concise read of **what the diff does and whether it hangs together** — **not** a repeat of the PR body (the author description belongs in **Pull request context**).
+Reviewer concise read of **what diff does and whether hangs together** — **not** repeat of PR body (author description belongs in **Pull request context**).
