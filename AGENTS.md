@@ -61,6 +61,11 @@ This file tracks AI agents and skills within the monorepo.
   `skills/create-aipipelines-jira-issue/`
   Creates Jira issues in RHOAIENG with AI Pipelines component, team,
   priority, and optional sprint; invokes bundled Python CLI script.
+- `ai-pipelines-cve-report` (Automation, Active) in
+  `skills/ai-pipelines-cve-report/`
+  Generates markdown report of all open security issues (CVEs, GHSAs,
+  Snyk, CWEs) for AI Pipelines Jira component; invokes bundled Python
+  CLI script.
 - `ask-dont-assume` (Feedback, Active) in `memories/ask-dont-assume/`
   Memory artifact encouraging the agent to ask the user for clarification
   instead of making assumptions when facing ambiguity.
@@ -92,6 +97,7 @@ Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
   `diff-acquisition`, `thorough-review`
 - `pr-review-to-file` -> `pr-review`
 - `create-aipipelines-jira-issue` (standalone; no dependencies)
+- `ai-pipelines-cve-report` (standalone; no dependencies)
 - `ask-dont-assume` (standalone; no dependencies)
 
 ### Dependency Layers
