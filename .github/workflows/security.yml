@@ -51,9 +51,6 @@ jobs:
         run: |
           uv sync --group security
 
-      - name: Upgrade pip
-        run: uv pip install --upgrade pip
-
       - name: Run pip-audit
         run: |
           uv run pip-audit
