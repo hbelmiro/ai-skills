@@ -20,5 +20,5 @@ team field, priority, and optional sprint assignment.
 ## Install
 
 ```
-striatum install --target claude|cursor quay.io/hbelmiro/create-aipipelines-jira-issue:<version>
+striatum install --target claude|cursor|codex quay.io/hbelmiro/create-aipipelines-jira-issue:<version>
 ```

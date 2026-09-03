@@ -1,4 +1,4 @@
-"""Skill installer — packs and installs skills via striatum (Cursor or Claude)."""
+"""Skill installer — packs and installs skills via striatum."""
 
 from __future__ import annotations
 
@@ -18,7 +18,7 @@ _ARTIFACT_JSON = "artifact.json"
 _STRIATUM_BUILD_DIR = "build"
 _SKILL_NAME_RE = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?$")
 # Values passed to striatum ``install|uninstall --target …``.
-STRIATUM_INSTALL_TARGETS = ("cursor", "claude")
+STRIATUM_INSTALL_TARGETS = ("cursor", "claude", "codex")
 
 
 def _find_striatum() -> str:
@@ -334,12 +334,22 @@ def _install_ordered_skills(
     installable_kinds = {"Skill"}
     if install_target == "claude":
         installable_kinds.add("Workflow")
-    to_install = [
-        name
-        for name in names
-        if _read_artifact_kind(_find_artifact_dir(name, artifact_dirs))
-        in installable_kinds
-    ]
+    to_install: list[str] = []
+    for name in names:
+        kind = _read_artifact_kind(_find_artifact_dir(name, artifact_dirs))
+        if kind not in installable_kinds:
+            continue
+        if install_target != "claude" and any(
+            _read_artifact_kind(_find_artifact_dir(dep, artifact_dirs)) == "Workflow"
+            for dep in _resolve_all_deps(name, artifact_dirs)
+        ):
+            print(
+                f"skipping {name}: it depends on a Workflow, which only supports "
+                "--target claude",
+                file=sys.stderr,
+            )
+            continue
+        to_install.append(name)
     n = len(to_install)
     installed_ok: list[str] = []
     for i, name in enumerate(to_install, start=1):
@@ -476,7 +486,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description=(
             "Pack, push, and install skills via striatum and an OCI registry "
-            "(Cursor or Claude)."
+            "(Cursor, Claude, or Codex)."
         ),
     )
     parser.add_argument("--skill", help="Name of the skill to install/uninstall")
@@ -494,7 +504,8 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Install to personal skills dir for the chosen --target "
-            "(e.g. ~/.cursor/skills/ or Claude equivalent; all projects)"
+            "(e.g. ~/.cursor/skills/, ~/.claude/skills/, or ~/.codex/skills/; "
+            "all projects)"
         ),
     )
     target_group.add_argument(
@@ -503,7 +514,8 @@ def _build_parser() -> argparse.ArgumentParser:
         metavar="PATH",
         help=(
             "Install to project-local skills dir for the chosen --target "
-            "(e.g. <PATH>/.cursor/skills/ or Claude equivalent)"
+            "(e.g. <PATH>/.cursor/skills/, <PATH>/.claude/skills/, or "
+            "<PATH>/.codex/skills/)"
         ),
     )
 
@@ -525,7 +537,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--install-all",
         action="store_true",
-        help="Pack and push all artifacts in skills/, prompts/, and workflows/; install Skills and Workflows (claude only)",
+        help=(
+            "Pack and push all artifacts in skills/, prompts/, and workflows/; "
+            "install Skills for every target and Workflows for Claude only"
+        ),
     )
     return parser
 
