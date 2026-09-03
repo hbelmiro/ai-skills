@@ -205,6 +205,23 @@ class TestValidateSkillName:
 
 
 class TestValidateTargets:
+    def test_install_skill_accepts_codex_target(
+        self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        _make_artifact(skills_root, "my-skill")
+        monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
+        monkeypatch.setattr("install._artifact_roots", lambda: [skills_root])
+        monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
+
+        calls, fake_run = _fake_run_factory()
+        monkeypatch.setattr("install._run", fake_run)
+
+        install_skill("my-skill", targets=["codex"])
+
+        install_calls = [c for c in calls if _is_striatum_install_argv(c)]
+        assert len(install_calls) == 1
+        assert _striatum_target_from_argv(install_calls[0]) == "codex"
+
     def test_install_skill_rejects_unknown_target(
         self,
         skills_root: Path,
@@ -1185,15 +1202,15 @@ class TestInstallSkill:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        install_skill("my-skill", targets=["cursor", "claude"])
+        install_skill("my-skill", targets=["cursor", "claude", "codex"])
 
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 1
 
         install_calls = [c for c in calls if _is_striatum_install_argv(c)]
-        assert len(install_calls) == 2
+        assert len(install_calls) == 3
         targets_used = [_striatum_target_from_argv(c) for c in install_calls]
-        assert targets_used == ["cursor", "claude"]
+        assert targets_used == ["cursor", "claude", "codex"]
 
     def test_duplicate_targets_deduplicated(
         self, skills_root: Path, monkeypatch: pytest.MonkeyPatch
@@ -1418,15 +1435,15 @@ class TestInstallAllSkills:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        install_all_skills(targets=["cursor", "claude"])
+        install_all_skills(targets=["cursor", "claude", "codex"])
 
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
         assert len(push_calls) == 1
 
         install_calls = [c for c in calls if _is_striatum_install_argv(c)]
-        assert len(install_calls) == 2
+        assert len(install_calls) == 3
         targets_used = [_striatum_target_from_argv(c) for c in install_calls]
-        assert targets_used == ["cursor", "claude"]
+        assert targets_used == ["cursor", "claude", "codex"]
 
     def test_empty_skills_no_subprocess_and_no_registry_required(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -1531,14 +1548,21 @@ class TestInstallAllSkills:
         install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 1
 
-    def test_install_all_skips_workflow_artifacts(
+    @pytest.mark.parametrize("install_target", ["cursor", "codex"])
+    def test_install_all_skips_workflow_artifacts_for_non_claude_targets(
         self,
         skills_root: Path,
         workflows_root: Path,
         monkeypatch: pytest.MonkeyPatch,
+        install_target: str,
     ) -> None:
         _make_artifact(skills_root, "my-skill")
         _make_artifact(workflows_root, "my-workflow", kind="Workflow")
+        _make_artifact(
+            skills_root,
+            "requires-workflow",
+            dependencies=[_oci_dep("my-workflow")],
+        )
 
         monkeypatch.setenv("STRIATUM_REGISTRY", "localhost:5050/skills")
         monkeypatch.setattr(
@@ -1549,10 +1573,10 @@ class TestInstallAllSkills:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        install_all_skills(targets=["cursor"])
+        install_all_skills(targets=[install_target])
 
         push_calls = [c for c in calls if len(c) > 1 and c[1] == "push"]
-        assert len(push_calls) == 2
+        assert len(push_calls) == 3
 
         install_calls = [c for c in calls if _is_striatum_install_argv(c)]
         assert len(install_calls) == 1
@@ -1632,7 +1656,7 @@ class TestInstallAllSkills:
 
 
 class TestUninstallSkill:
-    @pytest.mark.parametrize("install_target", ["cursor", "claude"])
+    @pytest.mark.parametrize("install_target", ["cursor", "claude", "codex"])
     def test_calls_striatum_uninstall(
         self, monkeypatch: pytest.MonkeyPatch, install_target: str
     ) -> None:
@@ -1656,12 +1680,12 @@ class TestUninstallSkill:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        uninstall_skill("my-skill", targets=["cursor", "claude"])
+        uninstall_skill("my-skill", targets=["cursor", "claude", "codex"])
 
         uninstall_calls = [c for c in calls if "uninstall" in c]
-        assert len(uninstall_calls) == 2
+        assert len(uninstall_calls) == 3
         targets_used = [_striatum_target_from_argv(c) for c in uninstall_calls]
-        assert targets_used == ["cursor", "claude"]
+        assert targets_used == ["cursor", "claude", "codex"]
 
     def test_project_flag_passed(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setattr("install.shutil.which", lambda _: "/usr/bin/striatum")
@@ -1686,7 +1710,7 @@ class TestUninstallSkill:
 
 
 class TestReinstallAll:
-    @pytest.mark.parametrize("install_target", ["cursor", "claude"])
+    @pytest.mark.parametrize("install_target", ["cursor", "claude", "codex"])
     def test_calls_striatum_reinstall(
         self, monkeypatch: pytest.MonkeyPatch, install_target: str
     ) -> None:
@@ -1709,11 +1733,11 @@ class TestReinstallAll:
         calls, fake_run = _fake_run_factory()
         monkeypatch.setattr("install._run", fake_run)
 
-        reinstall_all(targets=["cursor", "claude"])
+        reinstall_all(targets=["cursor", "claude", "codex"])
 
-        assert len(calls) == 2
+        assert len(calls) == 3
         targets_used = [_striatum_target_from_argv(c) for c in calls]
-        assert targets_used == ["cursor", "claude"]
+        assert targets_used == ["cursor", "claude", "codex"]
         assert all("--reinstall-all" in c for c in calls)
 
     def test_force_flag_passed(self, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -1995,7 +2019,7 @@ class TestCli:
 
     def test_cli_accepts_multiple_targets(self) -> None:
         result = _run_cli(
-            "--target", "cursor", "claude", "--personal", "--skill", "my-skill"
+            "--target", "cursor", "claude", "codex", "--personal", "--skill", "my-skill"
         )
         assert result.returncode != 2
 
