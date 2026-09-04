@@ -2,9 +2,9 @@
 
 Execute in order. If step not applicable, state N/A with reason.
 
-## 0. Git (hard rule)
+## 0. Operations
 
-- [ ] **Never** `git commit`, `git push`, `git commit --amend`, `git rebase`, `git merge`, `git cherry-pick`, `git pull` when merge/rebase, or anything that creates commits or updates remotes. Read-only git fine. Edits stay in working tree; tell user what commit or push if needed.
+- [ ] Apply [`../../prompts/review-operations/PROMPT.md`](../../prompts/review-operations/PROMPT.md).
 
 ## 1. Review (fresh eyes)
 

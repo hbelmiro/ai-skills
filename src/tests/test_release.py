@@ -423,8 +423,8 @@ class TestSetReleaseVersion:
             skill_names=["generic-review"],
             skill_deps={"generic-review": [("review-shared", _ARTIFACT_SNAPSHOT)]},
             prompt_names=["review-shared"],
-            workflow_names=["thorough-review"],
-            workflow_deps={"thorough-review": [("review-shared", _ARTIFACT_SNAPSHOT)]},
+            workflow_names=["sample-workflow"],
+            workflow_deps={"sample-workflow": [("review-shared", _ARTIFACT_SNAPSHOT)]},
             memory_names=["ask-dont-assume"],
         )
 
@@ -443,7 +443,7 @@ class TestSetReleaseVersion:
         assert _ARTIFACT_SNAPSHOT not in prompt_artifact
 
         workflow_artifact = (
-            repo / "workflows" / "thorough-review" / "artifact.json"
+            repo / "workflows" / "sample-workflow" / "artifact.json"
         ).read_text(encoding="utf-8")
         assert '"version": "2.0.0"' in workflow_artifact
         assert _ARTIFACT_SNAPSHOT not in workflow_artifact
