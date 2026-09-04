@@ -10,6 +10,7 @@
     "files": ["SKILL.md", "README.md", "fix-pr-comments-checklist.md"]
   },
   "dependencies": [
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-operations", "tag": "999-SNAPSHOT" },
     { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "tdd", "tag": "999-SNAPSHOT" },
     { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "pr-review", "tag": "999-SNAPSHOT" },
     { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "plan", "tag": "999-SNAPSHOT" }

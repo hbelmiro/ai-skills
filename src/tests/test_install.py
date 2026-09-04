@@ -779,15 +779,15 @@ class TestResolveAllDeps:
         )
         _make_artifact(
             workflows_root,
-            "thorough-review",
+            "sample-workflow",
             kind="Workflow",
             dependencies=[_oci_dep("review-shared"), _oci_dep("go-code-review")],
         )
         result = _resolve_all_deps(
-            "thorough-review", [skills_root, prompts_root, workflows_root]
+            "sample-workflow", [skills_root, prompts_root, workflows_root]
         )
         assert result.index("review-shared") < result.index("go-code-review")
-        assert result.index("go-code-review") < result.index("thorough-review")
+        assert result.index("go-code-review") < result.index("sample-workflow")
         assert len(result) == 3
 
     def test_missing_dependency_exits_with_available_list(
@@ -950,13 +950,13 @@ class TestGlobalInstallOrder:
         )
         _make_artifact(
             workflows_root,
-            "thorough-review",
+            "sample-workflow",
             kind="Workflow",
             dependencies=[_oci_dep("review-shared")],
         )
         order = _global_install_order([skills_root, prompts_root, workflows_root])
         assert order.index("review-shared") < order.index("generic-review")
-        assert order.index("review-shared") < order.index("thorough-review")
+        assert order.index("review-shared") < order.index("sample-workflow")
         assert len(order) == 3
 
 

@@ -13,5 +13,8 @@
       "output-template.md",
       "review-the-review.md"
     ]
-  }
+  },
+  "dependencies": [
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-policy", "tag": "999-SNAPSHOT" }
+  ]
 }

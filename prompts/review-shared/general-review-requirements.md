@@ -12,14 +12,6 @@ Apply to every review, regardless of language or component.
 - Interfaces no `Interface` suffix. Name after behavior. Keep concrete implementation unexported where language supports.
 - `switch`/`match`/`when` with one case + default = verbose `if`/`else`. Flag for simplification unless author documents plan for more cases soon.
 
-## Independent Reviewer Mode (Mandatory)
-
-- Review as if **not** author. No prior design context.
-- Author intent unproven until code, tests, or spec text support.
-- Each major conclusion = cite concrete evidence from diff behavior, call paths, tests.
-- Disprove first impression. Check one plausible failure path.
-- Evidence incomplete = state uncertainty explicit. No infer correctness.
-
 ## Mandatory Discussion Resolution Check
 
 - Prior review comments/design discussions exist = verify addressed in code.

@@ -11,6 +11,10 @@ This file tracks AI agents and skills within the monorepo.
 
 ## Agent Registry
 
+- `review-policy` (Code Review, Active) in `prompts/review-policy/`
+  Shared evidence-based independent-review policy.
+- `review-operations` (Code Review, Active) in `prompts/review-operations/`
+  Shared read-only Git and no-remote-mutation rules.
 - `go-code-review` (Code Review, Active) in `prompts/go-code-review/`
   Go code review workflow for correctness, reliability, security, and tests.
 - `python-code-review` (Code Review, Active) in
@@ -48,15 +52,6 @@ This file tracks AI agents and skills within the monorepo.
   `skills/pr-review-to-file/`
   Run `pr-review` for a PR URL and save the review output to
   `<project>/.hbelmiro/reviews/`; does not commit or push.
-- `thorough-review` (Code Review, Active) in
-  `workflows/thorough-review/`
-  Parallel fan-out review with adversarial verification: Go, Python,
-  and generic reviewers run concurrently; a skeptic agent verifies each
-  finding; survivors are merged and formatted.
-- `thorough-generic-review` (Code Review, Active) in
-  `skills/thorough-generic-review/`
-  Diff acquisition plus `thorough-review` fan-out: acquires the diff
-  automatically, then runs parallel reviewers with adversarial verification.
 - `create-aipipelines-jira-issue` (Automation, Active) in
   `skills/create-aipipelines-jira-issue/`
   Creates Jira issues in RHOAIENG with AI Pipelines component, team,
@@ -71,7 +66,9 @@ Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
 `workflows/*/artifact.json`, and `memories/*/artifact.json`
 (`dependencies` field).
 
-- `review-shared` (base; no dependencies)
+- `review-policy` (base; no dependencies)
+- `review-operations` (base; no dependencies)
+- `review-shared` (base; depends on review-policy)
 - `diff-acquisition` (base; no dependencies)
 - `plan` (base; no dependencies)
 - `go-code-review` -> `review-shared`
@@ -86,23 +83,18 @@ Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
 - `tdd` -> `generic-review`, `plan`
 - `fix-pr-comments` -> `tdd`, `pr-review`, `plan`
 - `review-and-fix` -> `tdd`, `generic-review`, `plan`
-- `thorough-review` ->
-  `review-shared`, `go-code-review`, `python-code-review`
-- `thorough-generic-review` ->
-  `diff-acquisition`, `thorough-review`
 - `pr-review-to-file` -> `pr-review`
 - `create-aipipelines-jira-issue` (standalone; no dependencies)
 - `ask-dont-assume` (standalone; no dependencies)
 
 ### Dependency Layers
 
-- **Layer 0 (foundation):** `review-shared`, `diff-acquisition`, `plan`
+- **Layer 0 (foundation):** `review-policy`, `review-operations`,
+  `review-shared`, `diff-acquisition`, `plan`
 - **Layer 1 (language):** `go-code-review`, `python-code-review`
 - **Layer 2 (domain orchestration):**
-  `kubeflow-pipelines-code-review`, `generic-review`,
-  `thorough-review`
-- **Layer 3 (entry workflows):** `pr-review`, `tdd`,
-  `thorough-generic-review`
+  `kubeflow-pipelines-code-review`, `generic-review`
+- **Layer 3 (entry workflows):** `pr-review`, `tdd`
 - **Layer 4 (fix workflows):** `fix-pr-comments`, `review-and-fix`,
   `pr-review-to-file`
 - **Standalone (memory):** `ask-dont-assume`
@@ -110,6 +102,8 @@ Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
 ### Deduplication Guidance
 
 - Keep global review rules and output conventions in `review-shared`.
+- Keep independent-review rules in `review-policy` and operational constraints
+  in `review-operations`.
 - Keep language-specific checks in
   `go-code-review` and `python-code-review`.
 - Keep diff-acquisition steps in `diff-acquisition`.
@@ -161,15 +155,6 @@ Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
   (gh context, comment validation, generic-review pipeline); save the
   review to `<project>/.hbelmiro/reviews/`; **never** commit or push (user
   owns git history and remotes).
-- `thorough-review` owns:
-  parallel fan-out orchestration and adversarial verification;
-  rely on `review-shared` for output template and general review
-  requirements; rely on `go-code-review` and `python-code-review`
-  for language-specific checks.
-- `thorough-generic-review` owns:
-  the diff-acquisition-to-thorough-review bridge; rely on
-  `diff-acquisition` for obtaining the diff and `thorough-review` for
-  parallel fan-out and adversarial verification.
 - `ask-dont-assume` owns:
   the "ask, don't assume" feedback guidance; loaded via Claude's memory
   system independently of skill dependencies.
