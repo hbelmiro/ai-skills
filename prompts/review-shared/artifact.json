@@ -3,7 +3,7 @@
   "kind": "Prompt",
   "metadata": {
     "name": "review-shared",
-    "version": "999-SNAPSHOT"
+    "version": "2026.12.0"
   },
   "spec": {
     "entrypoint": "README.md",
@@ -15,6 +15,6 @@
     ]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-policy", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-policy", "tag": "2026.12.0" }
   ]
 }

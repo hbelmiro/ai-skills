@@ -3,16 +3,16 @@
   "kind": "Skill",
   "metadata": {
     "name": "fix-pr-comments",
-    "version": "999-SNAPSHOT"
+    "version": "2026.12.0"
   },
   "spec": {
     "entrypoint": "SKILL.md",
     "files": ["SKILL.md", "README.md", "fix-pr-comments-checklist.md"]
   },
   "dependencies": [
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-operations", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "tdd", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "pr-review", "tag": "999-SNAPSHOT" },
-    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "plan", "tag": "999-SNAPSHOT" }
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "review-operations", "tag": "2026.12.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "tdd", "tag": "2026.12.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "pr-review", "tag": "2026.12.0" },
+    { "source": "oci", "registry": "quay.io/hbelmiro", "repository": "plan", "tag": "2026.12.0" }
   ]
 }
