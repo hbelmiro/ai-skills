@@ -5,6 +5,8 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    allow:
+      - dependency-type: "all"
     labels:
       - "dependencies"
       - "uv"
