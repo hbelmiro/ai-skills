@@ -18,12 +18,32 @@ Apply to every review, regardless of language or component.
 - "Resolved" status = signal, not proof. Confirm concern actually fixed.
 - Call out unresolved/weakly-resolved discussions explicit.
 
-## Mandatory Test Sufficiency Check
+## Mandatory Test Sufficiency and Quality Check
 
 - Answer explicit: "Tests cover enough scenarios?"
 - Note missing boundary cases, failure modes, retries/timeouts, integration gaps when relevant.
 - Probe adversarial: identify one "what breaks if assumptions wrong?" scenario. Test covers?
 - Never delete test cases covering nil/default behavior in same PR that changes validation logic. Cases genuinely wrong = update to reflect new expected behavior, not remove.
+
+### Test implementation quality
+
+- Assertions specific: each test asserts expected values/behavior, not just "no error" or "call ran".
+- No tautological tests: test asserting a mock returns what it was stubbed to return, with no real behavior exercised, = flag.
+- Tests exercise real code paths. Over-mocked tests that stub the unit under test = flag.
+- Test name and assertions match claimed behavior. Test would fail if behavior regressed.
+- Setup/teardown isolated: no hidden inter-test ordering or shared mutable state.
+
+## Mandatory CWE-74 Injection Validation
+
+- Trace untrusted input (user input, request params, env vars, file contents, external API responses) to every sink that interprets text as code or structure:
+  - SQL/NoSQL query construction: string-built queries, format strings.
+  - Shell command construction: `exec`, `subprocess` with `shell=True`, backticks, `os.system`.
+  - Template engines: Jinja2, Go `text/template`/`html/template` fed untrusted templates.
+  - `eval`/`exec`/dynamic code evaluation, deserialization of untrusted data.
+  - Format strings, XPath, LDAP, header/CRLF injection, path construction from untrusted input.
+- Flag any flow where untrusted input reaches such a sink without parameterization, safe APIs, escaping, or allow-listing.
+- Prefer parameterized queries, safe template contexts, argument-array process APIs. Flag string concatenation into interpreters.
+- Assertive when verifiable from diff/codebase. Cite file:line for each finding.
 
 ## Mandatory Structural Quality Check
 

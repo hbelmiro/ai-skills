@@ -75,7 +75,9 @@ In rendered review, use **one bullet per remaining question**, or **exactly one*
 - KFP checklist (if applicable): complete/incomplete
 - Independent reviewer mode applied: yes/no with brief evidence note
 - Tests and edge cases reviewed: yes/no with notes
+- Test implementation quality: complete/incomplete
 - Do tests cover enough scenarios?: yes/no with notes
+- CWE-74 injection validation: complete/incomplete
 - Broken link check: complete/incomplete
 - Structural quality check: complete/incomplete
 - Adversarial scenario gaps still open: list or "none"
