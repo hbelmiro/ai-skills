@@ -26,7 +26,7 @@ Run all checks. **Phase 1** before `generic-review`. **Phase 2** after draft fin
 
 ### Output order (PR reviews)
 
-- Final review MUST follow [`../../prompts/review-shared/output-template.md`](../../prompts/review-shared/output-template.md) section order. For PR URLs, **Pull request context** block (title, link, full PR **body**, base/head, author) MUST appear **first**, before **GitHub Review Comments** (numbered findings).
+- Final review MUST follow [`../../prompts/review-shared/output-template.md`](../../prompts/review-shared/output-template.md) section order.
 
 ## Phase 2 — After generic-review output
 
@@ -35,4 +35,4 @@ Run all checks. **Phase 1** before `generic-review`. **Phase 2** after draft fin
 - Use **all** thread sources from Phase 1 (issue comments, review summaries, inline review comments).
 - For each finding in **GitHub Review Comments**, **omit** from numbered list if prior PR comment raise **same concern** on **same code** (file + line/region). Match substance, not wording.
 - **Still emit finding** when: earlier thread stale vs current diff, concern marked resolved but code still violate, new finding **distinct** sub-issue not covered by earlier comment.
-- Record suppressed items brief under **Findings not repeated (already in PR discussion)** in output template. Not full duplicate comments.
+- Drop suppressed overlaps silently from the numbered list; no separate suppressed-findings section.

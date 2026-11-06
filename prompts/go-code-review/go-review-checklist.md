@@ -8,11 +8,11 @@ Run `golangci-lint` when target project Go module and tool available.
 Best-effort step; if tool missing, note gap and continue manual checks.
 
 - Confirm `go.mod` exist at project root. If not, skip section.
-- Check availability: `which golangci-lint`. If unavailable, record "golangci-lint: not available — skipped" in review output Coverage Check and proceed.
+- Check availability: `which golangci-lint`. If unavailable, add a Coverage Check bullet `golangci-lint: not available — skipped` and proceed.
 - Run: `golangci-lint run ./...` from module root. If config file exist (`.golangci.yml`, `.golangci.yaml`, or `.golangci.toml`), `golangci-lint` pick up automatic.
 - **Diff-scope filter:** Only report finding on file and line touched by change under review. Cross-reference linter output against diff. Discard finding on unchanged line.
 - **Deduplication:** When linter finding cover same issue as manual checklist item below, report once. Cite linter as supporting evidence rather than list both separate.
-- **Coverage Check annotation:** Annotate "Go baseline checklist" line with `golangci-lint` status: ran (with finding count on changed line), not available, or skipped (with reason).
+- **Coverage Check annotation:** When `golangci-lint` did not run or was skipped, note its status (not available / skipped, with reason) as a Coverage Check bullet; no annotation needed when it ran clean.
 
 ## Core Go Standards
 

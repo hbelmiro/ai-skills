@@ -7,6 +7,7 @@ Apply to every review, regardless of language or component.
 - Do not skip checklist items because files look unrelated.
 - Escalate security, data integrity, compatibility, reliability risks first.
 - Read code and tests. Flag assumptions. List **only** open questions when behavior unclear.
+- Ask, don't assume: when behavior or intent stays unclear after investigating code, tests, and in-scope context, ask the user directly instead of guessing.
 - Actionable fixes over generic advice.
 - Assertive when fact verifiable from code. State as fact. No hedge with "if"/"consider" when can confirm by reading diff/codebase.
 - Interfaces no `Interface` suffix. Name after behavior. Keep concrete implementation unexported where language supports.
@@ -20,7 +21,7 @@ Apply to every review, regardless of language or component.
 
 ## Mandatory Test Sufficiency and Quality Check
 
-- Answer explicit: "Tests cover enough scenarios?"
+- Answer explicit: "Tests cover enough scenarios?" When insufficient, state it as a finding or a Coverage Check bullet; the default "no open gaps" line covers adequate coverage.
 - Note missing boundary cases, failure modes, retries/timeouts, integration gaps when relevant.
 - Probe adversarial: identify one "what breaks if assumptions wrong?" scenario. Test covers?
 - Never delete test cases covering nil/default behavior in same PR that changes validation logic. Cases genuinely wrong = update to reflect new expected behavior, not remove.
