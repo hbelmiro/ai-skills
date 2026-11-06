@@ -9,13 +9,12 @@ silently correct review itself.
 
 - Every changed file in diff accounted for (reviewed or explicitly noted as no-issue).
 - All checklist sections from applicable artifact(s) executed; none silently skipped.
-- Coverage Check section accurately reflects which checklists completed.
+- Coverage Check accurate: any incomplete or skipped checklist explicitly listed with reason; silence means complete.
 - **Open Questions** always present, but bullets list **only** uncertainties
   that stay unresolved **after** you searched codebase, tests, and
   in-scope context (PR body, etc.). No use this section for items you could
   have settled by reading code. If nothing remains open, state **None**
   explicitly.
-- For **PR-linked** reviews: **Pull request context** present, appears **before** numbered findings, and includes full PR **body** (not only title).
 
 ## Accuracy
 
@@ -29,13 +28,12 @@ silently correct review itself.
 ## Consistency
 
 - No duplicate findings (same issue reported more than once under different wording).
-- For **PR** reviews where prior comments collected: findings no restate issues already raised on PR unless prior thread **stale**, concern **remains unresolved** in code, or new finding is **distinct** sub-issue. Suppressed overlaps belong under **Findings not repeated** per output template.
 - No contradictory findings (one comment recommends X, another recommends opposite).
 
 ## Signal-to-noise
 
 - Every finding actionable: identifies concrete problem and concrete fix or question.
-- Generic advice without specific code reference removed or made specific.
+- Each finding is 1–3 sentences. Trim restated code, filler, and generic advice without specific code reference.
 - Nitpicks that no affect correctness, security, or maintainability removed.
 
 ## Structural quality

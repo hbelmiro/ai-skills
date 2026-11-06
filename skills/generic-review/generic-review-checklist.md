@@ -16,17 +16,6 @@ Read and apply [`../../prompts/diff-acquisition/diff-acquisition.md`](../../prom
 - For high-impact claims, look for disconfirming evidence in nearby
   call paths or tests.
 
-## Discussion resolution check
+## Discussion resolution check and test sufficiency
 
-- If prior review comments, issues, or design threads relevant to change exist, verify concerns addressed in code (per [`general-review-requirements.md`](../../prompts/review-shared/general-review-requirements.md)).
-- If **no** such threads exist (typical for local-only review), state explicit in output template **Discussion Resolution Check** section (e.g. no PR/issue discussion to validate).
-
-## Risk and test sufficiency
-
-- Prioritize security, data integrity, reliability, and compatibility risks first.
-- Verify tests cover changed behavior, edge cases, and failure paths.
-- Challenge happy-path assumptions by checking at least one adversarial
-  scenario ("what breaks if assumption wrong?").
-- Explicit answer: "Do tests cover enough scenarios?"
-- After investigating codebase and tests, state assumptions and list only
-  open questions for which intent still unclear.
+Apply the mandatory checks in [`general-review-requirements.md`](../../prompts/review-shared/general-review-requirements.md). When no prior discussions exist (typical for local-only review), the **Discussion Resolution Check** section states this in one line (e.g. `- No prior discussions`).
