@@ -2,6 +2,7 @@ version: 2
 updates:
   # Enable version updates for Python dependencies managed by uv
   - package-ecosystem: "uv"
+    milestone: 13
     directory: "/"
     schedule:
       interval: "weekly"
@@ -14,6 +15,7 @@ updates:
 
   # Enable version updates for GitHub Actions
   - package-ecosystem: "github-actions"
+    milestone: 13
     directory: "/"
     schedule:
       interval: "daily"
