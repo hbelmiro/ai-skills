@@ -3,7 +3,7 @@
   "kind": "Memory",
   "metadata": {
     "name": "no-coauthored-by",
-    "version": "999-SNAPSHOT"
+    "version": "2026.16.0"
   },
   "spec": {
     "entrypoint": "MEMORY.md",

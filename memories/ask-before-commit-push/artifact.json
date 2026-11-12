@@ -3,7 +3,7 @@
   "kind": "Memory",
   "metadata": {
     "name": "ask-before-commit-push",
-    "version": "999-SNAPSHOT"
+    "version": "2026.16.0"
   },
   "spec": {
     "entrypoint": "MEMORY.md",
