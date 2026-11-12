@@ -59,6 +59,13 @@ This file tracks AI agents and skills within the monorepo.
 - `ask-dont-assume` (Feedback, Active) in `memories/ask-dont-assume/`
   Memory artifact encouraging the agent to ask the user for clarification
   instead of making assumptions when facing ambiguity.
+- `no-coauthored-by` (Feedback, Active) in `memories/no-coauthored-by/`
+  Memory artifact forbidding AI attribution (Co-Authored-By trailers,
+  "Generated with" lines) in commit messages and pull requests.
+- `ask-before-commit-push` (Feedback, Active) in
+  `memories/ask-before-commit-push/`
+  Memory artifact requiring the agent to ask the user before committing,
+  pushing, or opening a pull request.
 
 ## Skill Dependency Graph (`artifact.json`)
 
@@ -86,6 +93,8 @@ Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
 - `pr-review-to-file` -> `pr-review`
 - `create-aipipelines-jira-issue` (standalone; no dependencies)
 - `ask-dont-assume` (standalone; no dependencies)
+- `no-coauthored-by` (standalone; no dependencies)
+- `ask-before-commit-push` (standalone; no dependencies)
 
 ### Dependency Layers
 
@@ -97,7 +106,8 @@ Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
 - **Layer 3 (entry workflows):** `pr-review`, `tdd`
 - **Layer 4 (fix workflows):** `fix-pr-comments`, `review-and-fix`,
   `pr-review-to-file`
-- **Standalone (memory):** `ask-dont-assume`
+- **Standalone (memory):** `ask-dont-assume`, `no-coauthored-by`,
+  `ask-before-commit-push`
 
 ### Deduplication Guidance
 
@@ -157,6 +167,13 @@ Dependency source: `skills/*/artifact.json`, `prompts/*/artifact.json`,
   owns git history and remotes).
 - `ask-dont-assume` owns:
   the "ask, don't assume" feedback guidance; loaded via Claude's memory
+  system independently of skill dependencies.
+- `no-coauthored-by` owns:
+  the no-AI-attribution feedback guidance (no Co-Authored-By trailers or
+  "Generated with" lines in commits and PRs); loaded via Claude's memory
+  system independently of skill dependencies.
+- `ask-before-commit-push` owns:
+  the ask-before-git-mutation feedback guidance; loaded via Claude's memory
   system independently of skill dependencies.
 - If a rule already exists in an upstream dependency,
   link/reference it instead of repeating the same prose.
